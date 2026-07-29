@@ -1,0 +1,90 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+*.pid
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code (uncomment if you prefer not to share local editor settings)
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio build artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/build/
+/android/**/gradle-wrapper.jar
+/android/.gradle/
+/android/captures/
+/android/local.properties
+/android/**/GeneratedPluginRegistrant.java
+/android/key.properties
+*.jks
+*.keystore
+
+# iOS / Xcode generated
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Exceptions to above rules
+!default.mode1v3
+!default.mode2v3
+!default.mode3v3
+!default.mode4v3
+!default.xcworkspacedata
+
+# Stitch design export cache
+.stitch/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
