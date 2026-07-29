@@ -31,7 +31,7 @@ dart --version
 ### 1. Clone the repository
 
 ```bash
-git clone git@github.com-zafar:zafari-ahmed/ExpenseTracker.git
+git clone git@github.com:zafari-ahmed/ExpenseTracker.git
 cd ExpenseTracker
 ```
 
