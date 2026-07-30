@@ -34,6 +34,11 @@ class SmsPipelineService {
     return _preferencesService.customSmsIgnoreList();
   }
 
+  Future<List<String>> _activeDefaultIgnoreList() async {
+    final disabled = await _preferencesService.disabledDefaultSmsIgnoreList();
+    return SmsParser.effectiveDefaultIgnorePhrases(disabledPhrases: disabled);
+  }
+
   /// Process one incoming / inbox SMS. Returns true if a transaction or review
   /// item was created.
   Future<bool> processIncomingSms({
@@ -46,11 +51,13 @@ class SmsPipelineService {
     if (trimmedBody.isEmpty) return false;
 
     final customIgnore = await _customIgnoreList();
+    final activeDefaults = await _activeDefaultIgnoreList();
 
     // Drop OTP / credit / user-ignored alerts before any card matching.
     if (SmsParser.shouldIgnoreSms(
       trimmedBody,
       extraIgnorePhrases: customIgnore,
+      enabledDefaultIgnorePhrases: activeDefaults,
     )) {
       return false;
     }
@@ -63,7 +70,8 @@ class SmsPipelineService {
     final cards = await _cardsRepository.getCards(activeOnly: true);
     if (cards.isEmpty) return false;
 
-    final card = _matchCard(cards, senderId: senderId, body: trimmedBody);
+    CardModel? card = _matchCard(cards, senderId: senderId, body: trimmedBody);
+    card ??= await _matchCardByRule(cards, trimmedBody, receivedAt);
     if (card == null) return false;
 
     final rule = await _ruleForCard(card, sampleBody: trimmedBody);
@@ -74,6 +82,7 @@ class SmsPipelineService {
       body: trimmedBody,
       receivedAt: receivedAt,
       customIgnorePhrases: customIgnore,
+      activeDefaultIgnorePhrases: activeDefaults,
     );
     return true;
   }
@@ -85,20 +94,23 @@ class SmsPipelineService {
     required String body,
     DateTime? receivedAt,
     List<String>? customIgnorePhrases,
+    List<String>? activeDefaultIgnorePhrases,
   }) async {
-    final customIgnore =
-        customIgnorePhrases ?? await _customIgnoreList();
+    final customIgnore = customIgnorePhrases ?? await _customIgnoreList();
+    final activeDefaults =
+        activeDefaultIgnorePhrases ?? await _activeDefaultIgnoreList();
 
     if (SmsParser.shouldIgnoreSms(
       body,
       extraIgnorePhrases: customIgnore,
+      enabledDefaultIgnorePhrases: activeDefaults,
     )) {
       return;
     }
 
     final lowerBody = body.toLowerCase();
     final excludes = <String>{
-      ...SmsParser.defaultIgnorePhrases,
+      ...activeDefaults,
       ...customIgnore,
       ...rule.excludeKeywords,
     };
@@ -193,6 +205,41 @@ class SmsPipelineService {
       }
     }
     return senderMatches.first;
+  }
+
+  /// Fallback when sender ID / last-4 matching fails:
+  /// try each card's saved regex rule and use the only rule that parses.
+  Future<CardModel?> _matchCardByRule(
+    List<CardModel> cards,
+    String body,
+    DateTime? receivedAt,
+  ) async {
+    CardModel? matched;
+    var matchCount = 0;
+    final fallbackDate = receivedAt ?? DateTime.now();
+
+    for (final card in cards) {
+      final rule = await _cardsRepository.getRuleForCard(card.id);
+      if (rule == null) continue;
+
+      final parsed = SmsParser.parse(
+        smsBody: body,
+        amountPattern: rule.amountPattern,
+        placePattern: rule.placePattern,
+        datePattern: rule.datePattern,
+        fallbackDate: fallbackDate,
+      );
+      if (parsed == null) continue;
+
+      matchCount++;
+      matched = card;
+      if (matchCount > 1) {
+        // Ambiguous match: don't guess the wrong card.
+        return null;
+      }
+    }
+
+    return matchCount == 1 ? matched : null;
   }
 
   Future<SmsParsingRuleModel> _ruleForCard(

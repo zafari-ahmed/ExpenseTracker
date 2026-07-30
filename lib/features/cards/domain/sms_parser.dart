@@ -74,7 +74,9 @@ abstract final class SmsParser {
     'purchase at',
     'purchased at',
     'paid at',
-    'paid to',
+    'payment at',
+    'have been paid',
+    'payment made',
     'payment of',
     'payment for',
     'withdrawn',
@@ -95,21 +97,24 @@ abstract final class SmsParser {
   ///
   /// [extraIgnorePhrases] comes from Settings → SMS ignore list (full samples
   /// or short phrases). A match means the SMS body contains the phrase.
+  /// [enabledDefaultIgnorePhrases] lets users disable selected built-in phrases.
   static bool shouldIgnoreSms(
     String smsBody, {
     List<String> extraIgnorePhrases = const <String>[],
+    List<String>? enabledDefaultIgnorePhrases,
   }) {
     final lower = _normalizeSms(smsBody).toLowerCase();
     if (lower.isEmpty) return true;
 
-    for (final phrase in defaultIgnorePhrases) {
+    final defaults = enabledDefaultIgnorePhrases ?? defaultIgnorePhrases;
+    for (final phrase in defaults) {
       if (lower.contains(phrase)) return true;
     }
 
     for (final raw in extraIgnorePhrases) {
       final phrase = _normalizeSms(raw).toLowerCase();
       if (phrase.isEmpty) continue;
-      if (lower.contains(phrase) || phrase.contains(lower)) return true;
+      if (lower.contains(phrase)) return true;
     }
 
     // "152555 is your otp..." / "your otp is 152555"
@@ -129,6 +134,19 @@ abstract final class SmsParser {
     return false;
   }
 
+  static List<String> effectiveDefaultIgnorePhrases({
+    List<String> disabledPhrases = const <String>[],
+  }) {
+    if (disabledPhrases.isEmpty) return List<String>.from(defaultIgnorePhrases);
+    final disabled = disabledPhrases
+        .map((e) => e.trim().toLowerCase())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    return defaultIgnorePhrases
+        .where((phrase) => !disabled.contains(phrase.toLowerCase()))
+        .toList(growable: false);
+  }
+
   static bool hasExpenseSignal(String lowerBody) {
     for (final phrase in expenseSignalPhrases) {
       if (lowerBody.contains(phrase)) return true;
@@ -136,31 +154,219 @@ abstract final class SmsParser {
     return false;
   }
 
-  /// Flexible amount patterns for common bank SMS styles (incl. HBL `PKR-2,361.00`).
+  /// Numeric amount capture: supports 1020.00, 1,811.00, 535.0000
+  static const String amountCaptureGroup =
+      r'([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,4})?)';
+
+  static const String looseAmountToken =
+      r'(?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+)';
+
   static const List<String> defaultAmountPatterns = <String>[
     // HBL-style: for PKR-2,361.00 | for PKR 2,361.00
-    r'for\s+(?:PKR|Rs\.?|RS\.?)\s*[-:]?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)',
+    r'for\s+(?:PKR|Rs\.?|RS\.?)\s*[-:]?\s*' + amountCaptureGroup,
+    // Amount: Rs. 1020.00
+    r'amount\s*[:\-]?\s*(?:PKR|Rs\.?|RS\.?)?\s*[-:]?\s*' + amountCaptureGroup,
     // PKR-2,361.00 | Rs.1234 | Rs 1,234 | USD:12.00
-    r'(?:PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)\s*[-:]?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)',
+    r'(?:PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)\s*[-:]?\s*' + amountCaptureGroup,
+    // Online of 535.0000 / payment of 535.0000
+    r'(?:online|payment|txn|transaction)?\s*of\s+' + amountCaptureGroup,
     // 2,361.00 PKR
-    r'([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)\s*[-:]?\s*(?:PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)',
-    // amount/debited/charged ... 1234.50
-    r'(?:amount|amt|debited|spent|charged|paid|txn|transaction)[^\d]{0,24}([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)',
+    amountCaptureGroup + r'\s*[-:]?\s*(?:PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)',
+    // amount/debited/charged/paid ... 1234.50
+    r'(?:amount|amt|debited|spent|charged|paid|txn|transaction)[^\d]{0,24}' +
+        amountCaptureGroup,
   ];
 
   static const List<String> defaultPlacePatterns = <String>[
     // HBL: charged at BACHAA PARTY for PKR-...
     r'charged\s+at\s+(.+?)\s+for\s+(?:PKR|Rs\.?|RS\.?)',
+    // SCB: paid at KFC - JAUHAR ... on 24-07-26
+    r'paid\s+at\s+(.+?)\s+on\s+',
+    // JazzCash/easypaisa style: payment at NK COMMUNICATION has been completed
+    r'payment\s+at\s+(.+?)\s+has\s+been\s+completed',
     // at MERCHANT before for/on/dated
-    r'\bat\s+([A-Za-z0-9][A-Za-z0-9 &.\-]{1,60}?)(?=\s+for\b|\s+on\b|\s+dated\b|[.\n]|$)',
+    r'\bat\s+([A-Za-z0-9][A-Za-z0-9 &.\-]{1,60}?)(?=\s+for\b|\s+on\b|\s+dated\b|\s+has\b|[.\n]|$)',
     r'merchant\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9 &.\-]{1,60})',
     r'(?:purchase|pos|spent|paid)\s+at\s+([A-Za-z0-9][A-Za-z0-9 &.\-]{1,60}?)(?=\s+for\b|\s+on\b|[.\n]|$)',
     r'\bto\s+([A-Za-z][A-Za-z0-9 &.\-]{1,60}?)(?=\s+on\b|[.\n]|$)',
   ];
 
-  /// Supports 28/07/2026 and 28/Jul/2026 and 28 Jul 2026.
+  /// Supports 28/07/2026, 24-07-26, 28/Jul/2026, 23 December 2025.
   static const String defaultDatePattern =
       r'([0-9]{1,2}[\/\-.](?:[0-9]{1,2}|[A-Za-z]{3,9})[\/\-.][0-9]{2,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4})';
+
+  /// Build regex from a pasted sample + the exact amount / place / date text
+  /// copied from that sample (no regex knowledge required).
+  static SmsRegexSuggestion? buildFromFieldValues({
+    required String sampleMessage,
+    required String amountValue,
+    required String placeValue,
+    String? dateValue,
+  }) {
+    final sample = _normalizeSms(sampleMessage);
+    final amountText = amountValue.trim();
+    final placeText = placeValue.trim();
+    final dateText = dateValue?.trim() ?? '';
+
+    if (sample.isEmpty || amountText.isEmpty || placeText.isEmpty) {
+      return null;
+    }
+
+    final amountNeedle = _amountNeedle(amountText);
+    final amountPattern = _patternAroundValue(
+      sample: sample,
+      value: amountNeedle,
+      captureGroup: amountCaptureGroup,
+      leftBudget: 28,
+      rightBudget: 18,
+      flexibleCurrency: true,
+    );
+    if (amountPattern == null) return null;
+
+    final placePattern = _patternAroundValue(
+      sample: sample,
+      value: placeText,
+      captureGroup: r'(.+?)',
+      leftBudget: 24,
+      rightBudget: 22,
+      caseInsensitiveValue: true,
+    );
+    if (placePattern == null) return null;
+
+    String? datePattern;
+    if (dateText.isNotEmpty) {
+      datePattern = _patternAroundValue(
+        sample: sample,
+        value: dateText,
+        captureGroup:
+            r'([0-9]{1,2}[\/\-.](?:[0-9]{1,2}|[A-Za-z]{3,9})[\/\-.][0-9]{2,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4})',
+        leftBudget: 16,
+        rightBudget: 12,
+        caseInsensitiveValue: true,
+      );
+    }
+
+    return SmsRegexSuggestion(
+      amountPattern: amountPattern,
+      placePattern: placePattern,
+      datePattern: datePattern,
+    );
+  }
+
+  /// Strip currency labels so we capture only the numeric amount in SMS.
+  static String _amountNeedle(String raw) {
+    var value = raw.trim();
+    value = value.replaceFirst(
+      RegExp(r'^(?:PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)\s*[-:]?\s*', caseSensitive: false),
+      '',
+    );
+    return value.trim();
+  }
+
+  static String? _patternAroundValue({
+    required String sample,
+    required String value,
+    required String captureGroup,
+    required int leftBudget,
+    required int rightBudget,
+    bool caseInsensitiveValue = false,
+    bool flexibleCurrency = false,
+  }) {
+    if (value.isEmpty) return null;
+
+    final index = caseInsensitiveValue
+        ? sample.toLowerCase().indexOf(value.toLowerCase())
+        : sample.indexOf(value);
+    if (index < 0) return null;
+
+    final end = index + value.length;
+    var leftStart = (index - leftBudget).clamp(0, sample.length);
+    // If we clipped mid-word, expand left to the start of that word.
+    if (leftStart > 0 &&
+        !_isSpace(sample[leftStart]) &&
+        !_isSpace(sample[leftStart - 1])) {
+      final space = sample.lastIndexOf(' ', leftStart);
+      leftStart = space < 0 ? 0 : space + 1;
+    }
+
+    var rightEnd = (end + rightBudget).clamp(0, sample.length);
+    // If we clipped mid-word on the right, expand to the end of that word.
+    if (rightEnd < sample.length &&
+        !_isSpace(sample[rightEnd - 1]) &&
+        !_isSpace(sample[rightEnd])) {
+      final space = sample.indexOf(' ', rightEnd);
+      rightEnd = space < 0 ? sample.length : space;
+    }
+
+    final leftRaw = sample.substring(leftStart, index);
+    final rightRaw = sample.substring(end, rightEnd);
+    final left = _escapeContext(
+      leftRaw,
+      flexibleCurrency: flexibleCurrency,
+    );
+    final right = _escapeContext(
+      rightRaw,
+      flexibleCurrency: flexibleCurrency,
+    );
+
+    if (left.isEmpty && right.isEmpty) {
+      return captureGroup;
+    }
+    return '$left$captureGroup$right';
+  }
+
+  static bool _isSpace(String ch) => ch == ' ' || ch == '\n' || ch == '\t';
+
+  static String _escapeContext(String raw, {bool flexibleCurrency = false}) {
+    if (raw.isEmpty) return '';
+    var text = raw;
+
+    // Don't lock sibling fields (other amounts/dates) into the pattern.
+    // Wrap tokens in spaces so placeholders survive punctuation.
+    text = text.replaceAllMapped(
+      RegExp(
+        r'\d{1,2}[\/\-.](?:\d{1,2}|[A-Za-z]{3,9})[\/\-.][0-9]{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4}',
+      ),
+      (_) => ' «DATE» ',
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+|\d{4,}'),
+      (_) => ' «NUM» ',
+    );
+
+    if (flexibleCurrency) {
+      text = text.replaceAllMapped(
+        RegExp(r'(PKR|Rs\.?|RS\.?|INR|USD|AED|SAR)\s*[-:]?\s*', caseSensitive: false),
+        (_) => ' «CUR» ',
+      );
+    }
+
+    final parts = text.split(RegExp(r'\s+'));
+    final escaped = <String>[];
+    for (final part in parts) {
+      if (part.isEmpty) continue;
+      // Strip trailing punctuation from placeholder tokens.
+      final token = part.replaceAll(RegExp(r'^[^\w«]+|[^\w»]+$'), '');
+      if (token == '«CUR»' || part.contains('«CUR»')) {
+        escaped.add(r'(?:PKR|Rs\.?|RS\.?)\s*[-:]?\s*');
+      } else if (token == '«DATE»' || part.contains('«DATE»')) {
+        escaped.add(
+          r'(?:[0-9]{1,2}[\/\-.](?:[0-9]{1,2}|[A-Za-z]{3,9})[\/\-.][0-9]{2,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4})',
+        );
+      } else if (token == '«NUM»' || part.contains('«NUM»')) {
+        escaped.add(looseAmountToken);
+      } else {
+        escaped.add(RegExp.escape(part));
+      }
+    }
+    if (escaped.isEmpty) return '';
+
+    final leadingSpace =
+        raw.isNotEmpty && RegExp(r'^\s').hasMatch(raw) ? r'\s+' : '';
+    final trailingSpace =
+        raw.isNotEmpty && RegExp(r'\s$').hasMatch(raw) ? r'\s+' : '';
+    return '$leadingSpace${escaped.join(r'\s+')}$trailingSpace';
+  }
 
   static SmsRegexSuggestion suggestFromSample(String sample) {
     final normalized = _normalizeSms(sample);
@@ -176,7 +382,23 @@ abstract final class SmsParser {
       );
     }
 
-    String amountPattern = defaultAmountPatterns[1];
+    if (lower.contains('paid at') && lower.contains('pkr')) {
+      return SmsRegexSuggestion(
+        amountPattern: defaultAmountPatterns[2],
+        placePattern: defaultPlacePatterns[1],
+        datePattern: r'on\s+([0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})',
+      );
+    }
+
+    if (lower.contains('payment at') && lower.contains('amount')) {
+      return SmsRegexSuggestion(
+        amountPattern: defaultAmountPatterns[1],
+        placePattern: defaultPlacePatterns[2],
+        datePattern: r'at\s+([0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{2,4})',
+      );
+    }
+
+    String amountPattern = defaultAmountPatterns[2];
     for (final pattern in defaultAmountPatterns) {
       if (_firstAmount(normalized, pattern) != null) {
         amountPattern = pattern;
@@ -184,7 +406,7 @@ abstract final class SmsParser {
       }
     }
 
-    String placePattern = defaultPlacePatterns[1];
+    String placePattern = defaultPlacePatterns[3];
     for (final pattern in defaultPlacePatterns) {
       final match = _safeFirstMatch(pattern, normalized);
       if (match != null) {
@@ -296,10 +518,8 @@ abstract final class SmsParser {
 
   static String? _extractPlace(String body, String preferredPattern) {
     final patterns = <String>[
-      // Always prefer precise HBL merchant capture when present.
-      defaultPlacePatterns[0],
       if (preferredPattern.trim().isNotEmpty) preferredPattern.trim(),
-      ...defaultPlacePatterns.skip(1),
+      ...defaultPlacePatterns,
     ];
 
     for (final pattern in patterns) {

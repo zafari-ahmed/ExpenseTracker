@@ -93,6 +93,7 @@ class AppPreferencesService {
   }
 
   static const _customSmsIgnoreList = 'custom_sms_ignore_list';
+  static const _disabledDefaultSmsIgnoreList = 'disabled_default_sms_ignore_list';
 
   /// User-defined SMS samples / phrases that should never become expenses.
   Future<List<String>> customSmsIgnoreList() async {
@@ -127,5 +128,40 @@ class AppPreferencesService {
         .where((e) => e.trim().toLowerCase() != entry.trim().toLowerCase())
         .toList(growable: false);
     await setCustomSmsIgnoreList(next);
+  }
+
+  /// Built-in OTP/credit phrases that user explicitly disabled in settings.
+  Future<List<String>> disabledDefaultSmsIgnoreList() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_disabledDefaultSmsIgnoreList) ?? <String>[];
+  }
+
+  Future<void> setDisabledDefaultSmsIgnoreList(List<String> entries) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleaned = entries
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+    await prefs.setStringList(_disabledDefaultSmsIgnoreList, cleaned);
+  }
+
+  Future<bool> disableDefaultSmsIgnorePhrase(String phrase) async {
+    final trimmed = phrase.trim();
+    if (trimmed.isEmpty) return false;
+    final current = await disabledDefaultSmsIgnoreList();
+    final exists = current.any(
+      (e) => e.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (exists) return false;
+    await setDisabledDefaultSmsIgnoreList(<String>[...current, trimmed]);
+    return true;
+  }
+
+  Future<void> enableDefaultSmsIgnorePhrase(String phrase) async {
+    final current = await disabledDefaultSmsIgnoreList();
+    final next = current
+        .where((e) => e.trim().toLowerCase() != phrase.trim().toLowerCase())
+        .toList(growable: false);
+    await setDisabledDefaultSmsIgnoreList(next);
   }
 }

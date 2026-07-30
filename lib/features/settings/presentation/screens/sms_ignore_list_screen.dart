@@ -48,6 +48,8 @@ class _SmsIgnoreListScreenState extends ConsumerState<SmsIgnoreListScreen> {
   @override
   Widget build(BuildContext context) {
     final customAsync = ref.watch(smsIgnoreListProvider);
+    final activeDefaultsAsync = ref.watch(activeDefaultSmsIgnoreListProvider);
+    final disabledDefaultsAsync = ref.watch(disabledDefaultSmsIgnoreListProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -154,42 +156,117 @@ class _SmsIgnoreListScreenState extends ConsumerState<SmsIgnoreListScreen> {
           const SizedBox(height: AppSpacing.section),
           const EtLabelCaps('Built-in filters'),
           const SizedBox(height: 8),
-          EtSurfaceCard(
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Default OTP & credit filters'),
-                  subtitle: Text(
-                    _showBuiltIn
-                        ? 'These are always applied and cannot be removed.'
-                        : '${builtInSmsIgnorePhrases.length} phrases always applied',
-                  ),
-                  trailing: TextButton(
-                    onPressed: () =>
-                        setState(() => _showBuiltIn = !_showBuiltIn),
-                    child: Text(_showBuiltIn ? 'Hide' : 'Show'),
-                  ),
-                ),
-                if (_showBuiltIn) ...[
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final phrase in builtInSmsIgnorePhrases)
-                        Chip(
-                          label: Text(phrase),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
+          activeDefaultsAsync.when(
+            data: (activeDefaults) {
+              return EtSurfaceCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                      title: const Text('Default OTP & credit filters'),
+                      subtitle: Text(
+                        _showBuiltIn
+                            ? 'Tap delete to disable any default phrase.'
+                            : '${activeDefaults.length} active by default',
+                      ),
+                      trailing: TextButton(
+                        onPressed: () =>
+                            setState(() => _showBuiltIn = !_showBuiltIn),
+                        child: Text(_showBuiltIn ? 'Hide' : 'Show'),
+                      ),
+                    ),
+                    if (_showBuiltIn) ...[
+                      const Divider(height: 1),
+                      if (activeDefaults.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Text(
+                            'No default phrases are active right now.',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                          ),
+                        )
+                      else
+                        for (var i = 0; i < activeDefaults.length; i++) ...[
+                          if (i > 0) const Divider(height: 1),
+                          ListTile(
+                            contentPadding:
+                                const EdgeInsets.fromLTRB(14, 8, 4, 8),
+                            title: Text(activeDefaults[i]),
+                            trailing: IconButton(
+                              tooltip: 'Disable default phrase',
+                              icon: const Icon(Icons.delete_outline),
+                              color: AppColors.error,
+                              onPressed: () async {
+                                final removed = await ref
+                                    .read(smsIgnoreMutationsProvider)
+                                    .disableDefault(activeDefaults[i]);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      removed
+                                          ? 'Default phrase disabled'
+                                          : 'Already disabled',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                     ],
-                  ),
-                ],
-              ],
-            ),
+                  ],
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error: $e'),
+          ),
+          const SizedBox(height: 10),
+          disabledDefaultsAsync.when(
+            data: (disabledDefaults) {
+              if (disabledDefaults.isEmpty) return const SizedBox.shrink();
+              return EtSurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Disabled default phrases',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (var i = 0; i < disabledDefaults.length; i++) ...[
+                      if (i > 0) const Divider(height: 1),
+                      ListTile(
+                        contentPadding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                        title: Text(disabledDefaults[i]),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            await ref
+                                .read(smsIgnoreMutationsProvider)
+                                .restoreDefault(disabledDefaults[i]);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Default phrase restored'),
+                              ),
+                            );
+                          },
+                          child: const Text('Restore'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (e, _) => Text('Error: $e'),
           ),
         ],
       ),
