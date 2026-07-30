@@ -18,6 +18,7 @@ import '../../features/transactions/data/models/transaction_model.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
 import '../../features/transactions/presentation/providers/transactions_provider.dart';
 import '../database/isar_instance.dart';
+import 'app_preferences_service.dart';
 import 'service_providers.dart';
 import 'sms_pipeline_service.dart';
 
@@ -67,6 +68,7 @@ Future<SmsPipelineService> _standalonePipeline() async {
     cardsRepository: CardsRepository(isar),
     transactionsRepository: TransactionsRepository(isar),
     categoriesRepository: CategoriesRepository(isar),
+    preferencesService: AppPreferencesService(),
   );
 }
 

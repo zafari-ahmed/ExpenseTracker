@@ -10,6 +10,7 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/startup_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/settings/presentation/screens/needs_review_screen.dart';
+import '../../features/settings/presentation/screens/sms_ignore_list_screen.dart';
 import '../../features/cards/presentation/screens/sms_config_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_entry_screen.dart';
@@ -104,6 +105,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/needs-review',
         name: 'needs-review',
         builder: (context, state) => const NeedsReviewScreen(),
+      ),
+      GoRoute(
+        path: '/settings/sms-ignore',
+        name: 'sms-ignore',
+        builder: (context, state) => const SmsIgnoreListScreen(),
       ),
     ],
   );

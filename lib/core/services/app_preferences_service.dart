@@ -91,4 +91,41 @@ class AppPreferencesService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_billLeadDays, value);
   }
+
+  static const _customSmsIgnoreList = 'custom_sms_ignore_list';
+
+  /// User-defined SMS samples / phrases that should never become expenses.
+  Future<List<String>> customSmsIgnoreList() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_customSmsIgnoreList) ?? <String>[];
+  }
+
+  Future<void> setCustomSmsIgnoreList(List<String> entries) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleaned = entries
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+    await prefs.setStringList(_customSmsIgnoreList, cleaned);
+  }
+
+  Future<bool> addCustomSmsIgnoreEntry(String entry) async {
+    final trimmed = entry.trim();
+    if (trimmed.isEmpty) return false;
+    final current = await customSmsIgnoreList();
+    final exists = current.any(
+      (e) => e.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (exists) return false;
+    await setCustomSmsIgnoreList(<String>[...current, trimmed]);
+    return true;
+  }
+
+  Future<void> removeCustomSmsIgnoreEntry(String entry) async {
+    final current = await customSmsIgnoreList();
+    final next = current
+        .where((e) => e.trim().toLowerCase() != entry.trim().toLowerCase())
+        .toList(growable: false);
+    await setCustomSmsIgnoreList(next);
+  }
 }

@@ -30,10 +30,12 @@ final smsPipelineServiceProvider = FutureProvider<SmsPipelineService>((ref) asyn
   final cardsRepo = await ref.watch(cardsRepositoryProvider.future);
   final txRepo = await ref.watch(transactionsRepositoryProvider.future);
   final catRepo = await ref.watch(categoriesRepositoryProvider.future);
+  final prefs = ref.watch(appPreferencesServiceProvider);
   return SmsPipelineService(
     cardsRepository: cardsRepo,
     transactionsRepository: txRepo,
     categoriesRepository: catRepo,
+    preferencesService: prefs,
   );
 });
 

@@ -9,22 +9,30 @@ import '../../features/cards/domain/sms_parser.dart';
 import '../../features/categories/data/repositories/categories_repository.dart';
 import '../../features/transactions/data/models/transaction_model.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
+import 'app_preferences_service.dart';
 
 class SmsPipelineService {
   SmsPipelineService({
     required CardsRepository cardsRepository,
     required TransactionsRepository transactionsRepository,
     required CategoriesRepository categoriesRepository,
+    required AppPreferencesService preferencesService,
   })  : _cardsRepository = cardsRepository,
         _transactionsRepository = transactionsRepository,
-        _categoriesRepository = categoriesRepository;
+        _categoriesRepository = categoriesRepository,
+        _preferencesService = preferencesService;
 
   final CardsRepository _cardsRepository;
   final TransactionsRepository _transactionsRepository;
   final CategoriesRepository _categoriesRepository;
+  final AppPreferencesService _preferencesService;
   static const _uuid = Uuid();
 
   bool get supportsSmsReading => Platform.isAndroid;
+
+  Future<List<String>> _customIgnoreList() {
+    return _preferencesService.customSmsIgnoreList();
+  }
 
   /// Process one incoming / inbox SMS. Returns true if a transaction or review
   /// item was created.
@@ -36,6 +44,16 @@ class SmsPipelineService {
     if (!supportsSmsReading) return false;
     final trimmedBody = body.trim();
     if (trimmedBody.isEmpty) return false;
+
+    final customIgnore = await _customIgnoreList();
+
+    // Drop OTP / credit / user-ignored alerts before any card matching.
+    if (SmsParser.shouldIgnoreSms(
+      trimmedBody,
+      extraIgnorePhrases: customIgnore,
+    )) {
+      return false;
+    }
 
     // Skip exact duplicates already stored as transactions.
     if (await _transactionsRepository.existsByRawSmsBody(trimmedBody)) {
@@ -55,6 +73,7 @@ class SmsPipelineService {
       senderId: senderId,
       body: trimmedBody,
       receivedAt: receivedAt,
+      customIgnorePhrases: customIgnore,
     );
     return true;
   }
@@ -65,9 +84,27 @@ class SmsPipelineService {
     required String senderId,
     required String body,
     DateTime? receivedAt,
+    List<String>? customIgnorePhrases,
   }) async {
+    final customIgnore =
+        customIgnorePhrases ?? await _customIgnoreList();
+
+    if (SmsParser.shouldIgnoreSms(
+      body,
+      extraIgnorePhrases: customIgnore,
+    )) {
+      return;
+    }
+
     final lowerBody = body.toLowerCase();
-    if (rule.excludeKeywords.any((e) => lowerBody.contains(e.toLowerCase()))) {
+    final excludes = <String>{
+      ...SmsParser.defaultIgnorePhrases,
+      ...customIgnore,
+      ...rule.excludeKeywords,
+    };
+    if (excludes.any(
+      (e) => e.trim().isNotEmpty && lowerBody.contains(e.toLowerCase()),
+    )) {
       return;
     }
 
@@ -173,7 +210,7 @@ class SmsPipelineService {
       ..amountPattern = suggestion.amountPattern
       ..placePattern = suggestion.placePattern
       ..datePattern = suggestion.datePattern
-      ..excludeKeywords = <String>['otp', 'one time', 'verification'];
+      ..excludeKeywords = List<String>.from(SmsParser.defaultIgnorePhrases);
     await _cardsRepository.upsertParsingRule(rule);
     return rule;
   }

@@ -55,7 +55,7 @@ class CardMutations {
         ..amountPattern = suggestion.amountPattern
         ..placePattern = suggestion.placePattern
         ..datePattern = suggestion.datePattern
-        ..excludeKeywords = <String>['otp', 'one time', 'verification'];
+        ..excludeKeywords = List<String>.from(SmsParser.defaultIgnorePhrases);
       await repo.upsertParsingRule(rule);
       _ref.invalidate(parsingRuleByCardProvider(card.id));
     }

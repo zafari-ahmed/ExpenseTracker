@@ -157,6 +157,12 @@ class SettingsScreen extends ConsumerWidget {
                     );
                   },
                 ),
+                _SettingsRow(
+                  icon: Icons.block,
+                  title: 'SMS ignore list',
+                  subtitle: 'Paste full SMS samples to skip on sync',
+                  onTap: () => context.push('/settings/sms-ignore'),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.section),

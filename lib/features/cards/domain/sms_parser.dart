@@ -23,6 +23,119 @@ class SmsRegexSuggestion {
 }
 
 abstract final class SmsParser {
+  /// Global ignore list — applied even if a card rule forgot exclude keywords.
+  static const List<String> defaultIgnorePhrases = <String>[
+    // Auth / OTP
+    'otp',
+    'one time password',
+    'one-time password',
+    'one time pin',
+    'one-time pin',
+    'verification code',
+    'verification pin',
+    'auth code',
+    'authentication code',
+    'passcode',
+    'login code',
+    'security code',
+    'do not share',
+    'dont share',
+    "don't share",
+    // Incoming money / credits (not expenses)
+    'received from',
+    'has been credited',
+    'have been credited',
+    'is credited',
+    'credited to',
+    'credited in',
+    'credited with',
+    'amount credited',
+    'deposit of',
+    'deposited',
+    'cashback credited',
+    'refund credited',
+    'refund of',
+    'salary credited',
+    'has been received',
+    'have received',
+    'you received',
+    'you have received',
+    'funds received',
+    'money received',
+  ];
+
+  /// Phrases that strongly indicate a spend / debit SMS.
+  static const List<String> expenseSignalPhrases = <String>[
+    'debited',
+    'charged at',
+    'charged for',
+    'spent at',
+    'spent on',
+    'purchase at',
+    'purchased at',
+    'paid at',
+    'paid to',
+    'payment of',
+    'payment for',
+    'withdrawn',
+    'withdrawal',
+    'pos purchase',
+    'pos txn',
+    'pos transaction',
+    'txn at',
+    'transaction at',
+    'for pkr-',
+    'for pkr ',
+    'for rs',
+    'amount debited',
+    'amt debited',
+  ];
+
+  /// Returns true when this SMS should never create an expense transaction.
+  ///
+  /// [extraIgnorePhrases] comes from Settings → SMS ignore list (full samples
+  /// or short phrases). A match means the SMS body contains the phrase.
+  static bool shouldIgnoreSms(
+    String smsBody, {
+    List<String> extraIgnorePhrases = const <String>[],
+  }) {
+    final lower = _normalizeSms(smsBody).toLowerCase();
+    if (lower.isEmpty) return true;
+
+    for (final phrase in defaultIgnorePhrases) {
+      if (lower.contains(phrase)) return true;
+    }
+
+    for (final raw in extraIgnorePhrases) {
+      final phrase = _normalizeSms(raw).toLowerCase();
+      if (phrase.isEmpty) continue;
+      if (lower.contains(phrase) || phrase.contains(lower)) return true;
+    }
+
+    // "152555 is your otp..." / "your otp is 152555"
+    if (RegExp(r'\b(otp|passcode|pin)\b').hasMatch(lower) &&
+        RegExp(r'\b\d{4,8}\b').hasMatch(lower)) {
+      return true;
+    }
+
+    // Pure credit/incoming alerts: amount + received/credited, no spend signal.
+    final looksLikeCredit = RegExp(
+      r'\b(received|credited|deposited|credit)\b',
+    ).hasMatch(lower);
+    if (looksLikeCredit && !hasExpenseSignal(lower)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static bool hasExpenseSignal(String lowerBody) {
+    for (final phrase in expenseSignalPhrases) {
+      if (lowerBody.contains(phrase)) return true;
+    }
+    return false;
+  }
+
   /// Flexible amount patterns for common bank SMS styles (incl. HBL `PKR-2,361.00`).
   static const List<String> defaultAmountPatterns = <String>[
     // HBL-style: for PKR-2,361.00 | for PKR 2,361.00
