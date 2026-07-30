@@ -29,7 +29,7 @@ class SettingsScreen extends ConsumerWidget {
     final reviewAsync = ref.watch(needsReviewProvider);
     final themeMode = ref.watch(themeModeProvider);
     final profileNameAsync = ref.watch(profileNameProvider);
-    final profileName = profileNameAsync.valueOrNull ?? 'Alex Thompson';
+    final profileName = profileNameAsync.valueOrNull ?? 'Member';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -79,7 +79,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                   ),
                   Text(
-                    'Local-first SMS expense tracking',
+                    'SMS Expense Tracking',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.onSurfaceVariant,
                         ),

@@ -33,7 +33,7 @@ class DashboardScreen extends ConsumerWidget {
     final cardsAsync = ref.watch(activeCardsProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
     final txAsync = ref.watch(transactionsListProvider);
-    final profileName = ref.watch(profileNameProvider).valueOrNull ?? 'Alex';
+    final profileName = ref.watch(profileNameProvider).valueOrNull ?? 'Member';
     final monthLabel = DateFormat('MMMM yyyy').format(month);
 
     return Scaffold(

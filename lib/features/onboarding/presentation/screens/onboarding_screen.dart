@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/service_providers.dart';
+import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/design_tokens.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -105,6 +106,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         }
         return;
       }
+
+      // Start SMS listener only after permission_handler granted access.
+      // Avoids another_telephony.requestSmsPermissions crash.
+      try {
+        await ref.read(smsListenerServiceProvider).start();
+      } catch (e) {
+        debugPrint('SMS listener start after onboarding failed: $e');
+      }
     }
 
     await onboardingService.markComplete();
@@ -129,7 +138,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             children: [
               const SizedBox(height: 24),
               Text(
-                'ExpenseTracker',
+                'Expense Tracker',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w800,

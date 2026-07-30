@@ -257,7 +257,7 @@ class _SparklinePainter extends CustomPainter {
 class EtAppHeader extends StatelessWidget {
   const EtAppHeader({
     super.key,
-    this.title = 'ExpenseTracker',
+    this.title = 'Expense Tracker',
     this.greeting,
     this.subtitle,
     this.onCalendarTap,
@@ -815,7 +815,7 @@ Future<DateTime?> etPickMonth(BuildContext context, DateTime current) async {
   );
 }
 
-String etGreeting([String name = 'Alex']) {
+String etGreeting([String name = 'Member']) {
   final hour = DateTime.now().hour;
   final prefix = hour < 12
       ? 'Good Morning'

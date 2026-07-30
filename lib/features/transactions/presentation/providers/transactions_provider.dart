@@ -122,6 +122,13 @@ class TransactionMutations {
     _refresh();
   }
 
+  Future<int> deleteAllForCard(String cardId) async {
+    final repo = await _ref.read(transactionsRepositoryProvider.future);
+    final deleted = await repo.deleteAllForCard(cardId);
+    _refresh();
+    return deleted;
+  }
+
   void _refresh() {
     _ref.invalidate(transactionsListProvider);
     _ref.invalidate(thisMonthTotalProvider);

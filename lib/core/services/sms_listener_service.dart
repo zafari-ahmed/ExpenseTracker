@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:another_telephony/telephony.dart' as telephony;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -81,7 +81,10 @@ class SmsListenerService {
   Future<void> start() async {
     if (!Platform.isAndroid) return;
 
-    final granted = await _telephony.requestSmsPermissions ?? false;
+    // Never call Telephony.requestSmsPermissions — it crashes on permission
+    // results ("Reply already submitted"). Use permission_handler only.
+    final granted =
+        await _ref.read(permissionServiceProvider).isSmsGranted();
     if (!granted) {
       debugPrint('SMS permissions not granted — auto-detect disabled');
       return;
@@ -126,7 +129,8 @@ class SmsListenerService {
     var createdCount = 0;
 
     try {
-      final granted = await _telephony.requestSmsPermissions ?? false;
+      final granted =
+          await _ref.read(permissionServiceProvider).isSmsGranted();
       if (!granted) return 0;
 
       final prefs = _ref.read(appPreferencesServiceProvider);
@@ -199,9 +203,20 @@ final smsListenerServiceProvider = Provider<SmsListenerService>((ref) {
 });
 
 /// Ensures Isar provider is warm before SMS sync (used by app bootstrap).
+/// Skips the telephony permission dialog so onboarding can request via
+/// [PermissionService] without racing another_telephony.
 final smsBootstrapProvider = FutureProvider<void>((ref) async {
   if (!Platform.isAndroid) return;
   await ref.watch(isarProvider.future);
   await SharedPreferences.getInstance();
+
+  final onboardingDone =
+      await ref.read(onboardingServiceProvider).isComplete();
+  final smsGranted = await ref.read(permissionServiceProvider).isSmsGranted();
+  if (!onboardingDone && !smsGranted) {
+    debugPrint('SMS bootstrap deferred until onboarding grants SMS');
+    return;
+  }
+
   await ref.read(smsListenerServiceProvider).start();
 });

@@ -38,7 +38,7 @@ class AppPreferencesService {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString(_profileName)?.trim();
     if (name == null || name.isEmpty) {
-      return 'Alex Thompson';
+      return 'Member';
     }
     return name;
   }

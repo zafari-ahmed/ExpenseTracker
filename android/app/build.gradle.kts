@@ -39,6 +39,13 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            // Prefer modern packaging so 16KB-aligned native libs stay correctly aligned.
+            useLegacyPackaging = false
+        }
+    }
 }
 
 flutter {

@@ -23,11 +23,7 @@ const CategoryThresholdModelSchema = CollectionSchema(
       name: r'categoryId',
       type: IsarType.string,
     ),
-    r'id': PropertySchema(
-      id: 1,
-      name: r'id',
-      type: IsarType.string,
-    ),
+    r'id': PropertySchema(id: 1, name: r'id', type: IsarType.string),
     r'monthlyLimit': PropertySchema(
       id: 2,
       name: r'monthlyLimit',
@@ -37,8 +33,9 @@ const CategoryThresholdModelSchema = CollectionSchema(
       id: 3,
       name: r'notifyAtPercent',
       type: IsarType.long,
-    )
+    ),
   },
+
   estimateSize: _categoryThresholdModelEstimateSize,
   serialize: _categoryThresholdModelSerialize,
   deserialize: _categoryThresholdModelDeserialize,
@@ -55,7 +52,7 @@ const CategoryThresholdModelSchema = CollectionSchema(
           name: r'id',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
     ),
     r'categoryId': IndexSchema(
@@ -68,16 +65,17 @@ const CategoryThresholdModelSchema = CollectionSchema(
           name: r'categoryId',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
-    )
+    ),
   },
   links: {},
   embeddedSchemas: {},
+
   getId: _categoryThresholdModelGetId,
   getLinks: _categoryThresholdModelGetLinks,
   attach: _categoryThresholdModelAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _categoryThresholdModelEstimateSize(
@@ -143,12 +141,16 @@ Id _categoryThresholdModelGetId(CategoryThresholdModel object) {
 }
 
 List<IsarLinkBase<dynamic>> _categoryThresholdModelGetLinks(
-    CategoryThresholdModel object) {
+  CategoryThresholdModel object,
+) {
   return [];
 }
 
 void _categoryThresholdModelAttach(
-    IsarCollection<dynamic> col, Id id, CategoryThresholdModel object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  CategoryThresholdModel object,
+) {
   object.isarId = id;
 }
 
@@ -202,8 +204,10 @@ extension CategoryThresholdModelByIndex
     return putAllByIndex(r'id', objects);
   }
 
-  List<Id> putAllByIdSync(List<CategoryThresholdModel> objects,
-      {bool saveLinks = true}) {
+  List<Id> putAllByIdSync(
+    List<CategoryThresholdModel> objects, {
+    bool saveLinks = true,
+  }) {
     return putAllByIndexSync(r'id', objects, saveLinks: saveLinks);
   }
 
@@ -224,13 +228,15 @@ extension CategoryThresholdModelByIndex
   }
 
   Future<List<CategoryThresholdModel?>> getAllByCategoryId(
-      List<String> categoryIdValues) {
+    List<String> categoryIdValues,
+  ) {
     final values = categoryIdValues.map((e) => [e]).toList();
     return getAllByIndex(r'categoryId', values);
   }
 
   List<CategoryThresholdModel?> getAllByCategoryIdSync(
-      List<String> categoryIdValues) {
+    List<String> categoryIdValues,
+  ) {
     final values = categoryIdValues.map((e) => [e]).toList();
     return getAllByIndexSync(r'categoryId', values);
   }
@@ -249,8 +255,10 @@ extension CategoryThresholdModelByIndex
     return putByIndex(r'categoryId', object);
   }
 
-  Id putByCategoryIdSync(CategoryThresholdModel object,
-      {bool saveLinks = true}) {
+  Id putByCategoryIdSync(
+    CategoryThresholdModel object, {
+    bool saveLinks = true,
+  }) {
     return putByIndexSync(r'categoryId', object, saveLinks: saveLinks);
   }
 
@@ -258,8 +266,10 @@ extension CategoryThresholdModelByIndex
     return putAllByIndex(r'categoryId', objects);
   }
 
-  List<Id> putAllByCategoryIdSync(List<CategoryThresholdModel> objects,
-      {bool saveLinks = true}) {
+  List<Id> putAllByCategoryIdSync(
+    List<CategoryThresholdModel> objects, {
+    bool saveLinks = true,
+  }) {
     return putAllByIndexSync(r'categoryId', objects, saveLinks: saveLinks);
   }
 }
@@ -267,27 +277,39 @@ extension CategoryThresholdModelByIndex
 extension CategoryThresholdModelQueryWhereSort
     on QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QWhere> {
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterWhere>
-      anyIsarId() {
+  anyIsarId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
 }
 
-extension CategoryThresholdModelQueryWhere on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QWhereClause> {
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> isarIdEqualTo(Id isarId) {
+extension CategoryThresholdModelQueryWhere
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QWhereClause
+        > {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  isarIdEqualTo(Id isarId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: isarId,
-        upper: isarId,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(lower: isarId, upper: isarId),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> isarIdNotEqualTo(Id isarId) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  isarIdNotEqualTo(Id isarId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -309,8 +331,12 @@ extension CategoryThresholdModelQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> isarIdGreaterThan(Id isarId, {bool include = false}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  isarIdGreaterThan(Id isarId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: isarId, includeLower: include),
@@ -318,8 +344,12 @@ extension CategoryThresholdModelQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> isarIdLessThan(Id isarId, {bool include = false}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  isarIdLessThan(Id isarId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: isarId, includeUpper: include),
@@ -327,164 +357,224 @@ extension CategoryThresholdModelQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> isarIdBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  isarIdBetween(
     Id lowerIsarId,
     Id upperIsarId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerIsarId,
-        includeLower: includeLower,
-        upper: upperIsarId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerIsarId,
+          includeLower: includeLower,
+          upper: upperIsarId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> idEqualTo(String id) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  idEqualTo(String id) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'id',
-        value: [id],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'id', value: [id]),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> idNotEqualTo(String id) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  idNotEqualTo(String id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [],
-              upper: [id],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [id],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [],
+                upper: [id],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [id],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [id],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [],
-              upper: [id],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [id],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [],
+                upper: [id],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> categoryIdEqualTo(String categoryId) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  categoryIdEqualTo(String categoryId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'categoryId',
-        value: [categoryId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'categoryId', value: [categoryId]),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterWhereClause> categoryIdNotEqualTo(String categoryId) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterWhereClause
+  >
+  categoryIdNotEqualTo(String categoryId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'categoryId',
-              lower: [],
-              upper: [categoryId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'categoryId',
-              lower: [categoryId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'categoryId',
+                lower: [],
+                upper: [categoryId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'categoryId',
+                lower: [categoryId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'categoryId',
-              lower: [categoryId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'categoryId',
-              lower: [],
-              upper: [categoryId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'categoryId',
+                lower: [categoryId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'categoryId',
+                lower: [],
+                upper: [categoryId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 }
 
-extension CategoryThresholdModelQueryFilter on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QFilterCondition> {
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+extension CategoryThresholdModelQueryFilter
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QFilterCondition
+        > {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdLessThan(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -492,137 +582,176 @@ extension CategoryThresholdModelQueryFilter on QueryBuilder<
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'categoryId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'categoryId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-          QAfterFilterCondition>
-      categoryIdContains(String value, {bool caseSensitive = true}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'categoryId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'categoryId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-          QAfterFilterCondition>
-      categoryIdMatches(String pattern, {bool caseSensitive = true}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'categoryId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'categoryId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdIsEmpty() {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'categoryId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'categoryId', value: ''),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> categoryIdIsNotEmpty() {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  categoryIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'categoryId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'categoryId', value: ''),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idGreaterThan(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idLessThan(String value, {bool include = false, bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -630,193 +759,254 @@ extension CategoryThresholdModelQueryFilter on QueryBuilder<
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-          QAfterFilterCondition>
-      idContains(String value, {bool caseSensitive = true}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-          QAfterFilterCondition>
-      idMatches(String pattern, {bool caseSensitive = true}) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'id',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'id',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idIsEmpty() {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: ''),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> idIsNotEmpty() {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  idIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'id',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'id', value: ''),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> isarIdEqualTo(Id value) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  isarIdEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isarId', value: value),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> isarIdGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  isarIdGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'isarId',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> isarIdLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  isarIdLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'isarId',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> isarIdBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  isarIdBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'isarId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'isarId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> monthlyLimitEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  monthlyLimitEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'monthlyLimit',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'monthlyLimit',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> monthlyLimitGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'monthlyLimit',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> monthlyLimitLessThan(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  monthlyLimitGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'monthlyLimit',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'monthlyLimit',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> monthlyLimitBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  monthlyLimitLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'monthlyLimit',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  monthlyLimitBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -824,206 +1014,239 @@ extension CategoryThresholdModelQueryFilter on QueryBuilder<
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'monthlyLimit',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'monthlyLimit',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> notifyAtPercentEqualTo(int value) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  notifyAtPercentEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'notifyAtPercent',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'notifyAtPercent', value: value),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> notifyAtPercentGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  notifyAtPercentGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'notifyAtPercent',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'notifyAtPercent',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> notifyAtPercentLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  notifyAtPercentLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'notifyAtPercent',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'notifyAtPercent',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<CategoryThresholdModel, CategoryThresholdModel,
-      QAfterFilterCondition> notifyAtPercentBetween(
+  QueryBuilder<
+    CategoryThresholdModel,
+    CategoryThresholdModel,
+    QAfterFilterCondition
+  >
+  notifyAtPercentBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'notifyAtPercent',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'notifyAtPercent',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
 
-extension CategoryThresholdModelQueryObject on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QFilterCondition> {}
+extension CategoryThresholdModelQueryObject
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QFilterCondition
+        > {}
 
-extension CategoryThresholdModelQueryLinks on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QFilterCondition> {}
+extension CategoryThresholdModelQueryLinks
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QFilterCondition
+        > {}
 
 extension CategoryThresholdModelQuerySortBy
     on QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QSortBy> {
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByCategoryId() {
+  sortByCategoryId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'categoryId', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByCategoryIdDesc() {
+  sortByCategoryIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'categoryId', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortById() {
+  sortById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByIdDesc() {
+  sortByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByMonthlyLimit() {
+  sortByMonthlyLimit() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'monthlyLimit', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByMonthlyLimitDesc() {
+  sortByMonthlyLimitDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'monthlyLimit', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByNotifyAtPercent() {
+  sortByNotifyAtPercent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notifyAtPercent', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      sortByNotifyAtPercentDesc() {
+  sortByNotifyAtPercentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notifyAtPercent', Sort.desc);
     });
   }
 }
 
-extension CategoryThresholdModelQuerySortThenBy on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QSortThenBy> {
+extension CategoryThresholdModelQuerySortThenBy
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QSortThenBy
+        > {
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByCategoryId() {
+  thenByCategoryId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'categoryId', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByCategoryIdDesc() {
+  thenByCategoryIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'categoryId', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenById() {
+  thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByIdDesc() {
+  thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByIsarId() {
+  thenByIsarId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isarId', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByIsarIdDesc() {
+  thenByIsarIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isarId', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByMonthlyLimit() {
+  thenByMonthlyLimit() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'monthlyLimit', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByMonthlyLimitDesc() {
+  thenByMonthlyLimitDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'monthlyLimit', Sort.desc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByNotifyAtPercent() {
+  thenByNotifyAtPercent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notifyAtPercent', Sort.asc);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QAfterSortBy>
-      thenByNotifyAtPercentDesc() {
+  thenByNotifyAtPercentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notifyAtPercent', Sort.desc);
     });
@@ -1033,36 +1256,41 @@ extension CategoryThresholdModelQuerySortThenBy on QueryBuilder<
 extension CategoryThresholdModelQueryWhereDistinct
     on QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QDistinct> {
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QDistinct>
-      distinctByCategoryId({bool caseSensitive = true}) {
+  distinctByCategoryId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'categoryId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QDistinct>
-      distinctById({bool caseSensitive = true}) {
+  distinctById({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'id', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QDistinct>
-      distinctByMonthlyLimit() {
+  distinctByMonthlyLimit() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'monthlyLimit');
     });
   }
 
   QueryBuilder<CategoryThresholdModel, CategoryThresholdModel, QDistinct>
-      distinctByNotifyAtPercent() {
+  distinctByNotifyAtPercent() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'notifyAtPercent');
     });
   }
 }
 
-extension CategoryThresholdModelQueryProperty on QueryBuilder<
-    CategoryThresholdModel, CategoryThresholdModel, QQueryProperty> {
+extension CategoryThresholdModelQueryProperty
+    on
+        QueryBuilder<
+          CategoryThresholdModel,
+          CategoryThresholdModel,
+          QQueryProperty
+        > {
   QueryBuilder<CategoryThresholdModel, int, QQueryOperations> isarIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isarId');
@@ -1070,7 +1298,7 @@ extension CategoryThresholdModelQueryProperty on QueryBuilder<
   }
 
   QueryBuilder<CategoryThresholdModel, String, QQueryOperations>
-      categoryIdProperty() {
+  categoryIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'categoryId');
     });
@@ -1083,14 +1311,14 @@ extension CategoryThresholdModelQueryProperty on QueryBuilder<
   }
 
   QueryBuilder<CategoryThresholdModel, double, QQueryOperations>
-      monthlyLimitProperty() {
+  monthlyLimitProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'monthlyLimit');
     });
   }
 
   QueryBuilder<CategoryThresholdModel, int, QQueryOperations>
-      notifyAtPercentProperty() {
+  notifyAtPercentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'notifyAtPercent');
     });

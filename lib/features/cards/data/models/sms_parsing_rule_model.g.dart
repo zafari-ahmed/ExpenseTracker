@@ -23,11 +23,7 @@ const SmsParsingRuleModelSchema = CollectionSchema(
       name: r'amountPattern',
       type: IsarType.string,
     ),
-    r'cardId': PropertySchema(
-      id: 1,
-      name: r'cardId',
-      type: IsarType.string,
-    ),
+    r'cardId': PropertySchema(id: 1, name: r'cardId', type: IsarType.string),
     r'datePattern': PropertySchema(
       id: 2,
       name: r'datePattern',
@@ -38,11 +34,7 @@ const SmsParsingRuleModelSchema = CollectionSchema(
       name: r'excludeKeywords',
       type: IsarType.stringList,
     ),
-    r'id': PropertySchema(
-      id: 4,
-      name: r'id',
-      type: IsarType.string,
-    ),
+    r'id': PropertySchema(id: 4, name: r'id', type: IsarType.string),
     r'placePattern': PropertySchema(
       id: 5,
       name: r'placePattern',
@@ -52,8 +44,9 @@ const SmsParsingRuleModelSchema = CollectionSchema(
       id: 6,
       name: r'sampleMessage',
       type: IsarType.string,
-    )
+    ),
   },
+
   estimateSize: _smsParsingRuleModelEstimateSize,
   serialize: _smsParsingRuleModelSerialize,
   deserialize: _smsParsingRuleModelDeserialize,
@@ -70,7 +63,7 @@ const SmsParsingRuleModelSchema = CollectionSchema(
           name: r'id',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
     ),
     r'cardId': IndexSchema(
@@ -83,16 +76,17 @@ const SmsParsingRuleModelSchema = CollectionSchema(
           name: r'cardId',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
-    )
+    ),
   },
   links: {},
   embeddedSchemas: {},
+
   getId: _smsParsingRuleModelGetId,
   getLinks: _smsParsingRuleModelGetLinks,
   attach: _smsParsingRuleModelAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _smsParsingRuleModelEstimateSize(
@@ -186,12 +180,16 @@ Id _smsParsingRuleModelGetId(SmsParsingRuleModel object) {
 }
 
 List<IsarLinkBase<dynamic>> _smsParsingRuleModelGetLinks(
-    SmsParsingRuleModel object) {
+  SmsParsingRuleModel object,
+) {
   return [];
 }
 
 void _smsParsingRuleModelAttach(
-    IsarCollection<dynamic> col, Id id, SmsParsingRuleModel object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  SmsParsingRuleModel object,
+) {
   object.isarId = id;
 }
 
@@ -244,8 +242,10 @@ extension SmsParsingRuleModelByIndex on IsarCollection<SmsParsingRuleModel> {
     return putAllByIndex(r'id', objects);
   }
 
-  List<Id> putAllByIdSync(List<SmsParsingRuleModel> objects,
-      {bool saveLinks = true}) {
+  List<Id> putAllByIdSync(
+    List<SmsParsingRuleModel> objects, {
+    bool saveLinks = true,
+  }) {
     return putAllByIndexSync(r'id', objects, saveLinks: saveLinks);
   }
 }
@@ -253,7 +253,7 @@ extension SmsParsingRuleModelByIndex on IsarCollection<SmsParsingRuleModel> {
 extension SmsParsingRuleModelQueryWhereSort
     on QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QWhere> {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhere>
-      anyIsarId() {
+  anyIsarId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
@@ -263,17 +263,16 @@ extension SmsParsingRuleModelQueryWhereSort
 extension SmsParsingRuleModelQueryWhere
     on QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QWhereClause> {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      isarIdEqualTo(Id isarId) {
+  isarIdEqualTo(Id isarId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: isarId,
-        upper: isarId,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(lower: isarId, upper: isarId),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      isarIdNotEqualTo(Id isarId) {
+  isarIdNotEqualTo(Id isarId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -296,7 +295,7 @@ extension SmsParsingRuleModelQueryWhere
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      isarIdGreaterThan(Id isarId, {bool include = false}) {
+  isarIdGreaterThan(Id isarId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: isarId, includeLower: include),
@@ -305,7 +304,7 @@ extension SmsParsingRuleModelQueryWhere
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      isarIdLessThan(Id isarId, {bool include = false}) {
+  isarIdLessThan(Id isarId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: isarId, includeUpper: include),
@@ -314,163 +313,187 @@ extension SmsParsingRuleModelQueryWhere
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      isarIdBetween(
+  isarIdBetween(
     Id lowerIsarId,
     Id upperIsarId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerIsarId,
-        includeLower: includeLower,
-        upper: upperIsarId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerIsarId,
+          includeLower: includeLower,
+          upper: upperIsarId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      idEqualTo(String id) {
+  idEqualTo(String id) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'id',
-        value: [id],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'id', value: [id]),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      idNotEqualTo(String id) {
+  idNotEqualTo(String id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [],
-              upper: [id],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [id],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [],
+                upper: [id],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [id],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [id],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'id',
-              lower: [],
-              upper: [id],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [id],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'id',
+                lower: [],
+                upper: [id],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      cardIdEqualTo(String cardId) {
+  cardIdEqualTo(String cardId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'cardId',
-        value: [cardId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'cardId', value: [cardId]),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterWhereClause>
-      cardIdNotEqualTo(String cardId) {
+  cardIdNotEqualTo(String cardId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'cardId',
-              lower: [],
-              upper: [cardId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'cardId',
-              lower: [cardId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'cardId',
+                lower: [],
+                upper: [cardId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'cardId',
+                lower: [cardId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'cardId',
-              lower: [cardId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'cardId',
-              lower: [],
-              upper: [cardId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'cardId',
+                lower: [cardId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'cardId',
+                lower: [],
+                upper: [cardId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 }
 
-extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
-    SmsParsingRuleModel, QFilterCondition> {
+extension SmsParsingRuleModelQueryFilter
+    on
+        QueryBuilder<
+          SmsParsingRuleModel,
+          SmsParsingRuleModel,
+          QFilterCondition
+        > {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  amountPatternEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternLessThan(
+  amountPatternGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternBetween(
+  amountPatternLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  amountPatternBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -478,135 +501,140 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'amountPattern',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'amountPattern',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  amountPatternStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  amountPatternEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternContains(String value, {bool caseSensitive = true}) {
+  amountPatternContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'amountPattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'amountPattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternMatches(String pattern, {bool caseSensitive = true}) {
+  amountPatternMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'amountPattern',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'amountPattern',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternIsEmpty() {
+  amountPatternIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'amountPattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'amountPattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      amountPatternIsNotEmpty() {
+  amountPatternIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'amountPattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'amountPattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  cardIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdLessThan(
+  cardIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdBetween(
+  cardIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  cardIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -614,153 +642,158 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'cardId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'cardId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  cardIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  cardIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdContains(String value, {bool caseSensitive = true}) {
+  cardIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'cardId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'cardId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdMatches(String pattern, {bool caseSensitive = true}) {
+  cardIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'cardId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'cardId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdIsEmpty() {
+  cardIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'cardId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'cardId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      cardIdIsNotEmpty() {
+  cardIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'cardId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'cardId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternIsNull() {
+  datePatternIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'datePattern',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'datePattern'),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternIsNotNull() {
+  datePatternIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'datePattern',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'datePattern'),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
+  datePatternEqualTo(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternLessThan(
+  datePatternGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternBetween(
+  datePatternLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  datePatternBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -768,135 +801,140 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'datePattern',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'datePattern',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  datePatternStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  datePatternEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternContains(String value, {bool caseSensitive = true}) {
+  datePatternContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'datePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'datePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternMatches(String pattern, {bool caseSensitive = true}) {
+  datePatternMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'datePattern',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'datePattern',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternIsEmpty() {
+  datePatternIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'datePattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'datePattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      datePatternIsNotEmpty() {
+  datePatternIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'datePattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'datePattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  excludeKeywordsElementEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementLessThan(
+  excludeKeywordsElementGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementBetween(
+  excludeKeywordsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsElementBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -904,149 +942,119 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'excludeKeywords',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementContains(String value,
-          {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'excludeKeywords',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementMatches(String pattern,
-          {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'excludeKeywords',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'excludeKeywords',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsElementIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'excludeKeywords',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'excludeKeywords',
-        length,
-        true,
-        length,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'excludeKeywords',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsIsEmpty() {
+  excludeKeywordsElementStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'excludeKeywords',
-        0,
-        true,
-        0,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsIsNotEmpty() {
+  excludeKeywordsElementEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'excludeKeywords',
-        0,
-        false,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  excludeKeywordsElementContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'excludeKeywords',
-        0,
-        true,
-        length,
-        include,
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'excludeKeywords',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  excludeKeywordsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'excludeKeywords',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'excludeKeywords', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'excludeKeywords', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'excludeKeywords', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'excludeKeywords', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'excludeKeywords', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'excludeKeywords', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  excludeKeywordsLengthGreaterThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'excludeKeywords',
@@ -1059,7 +1067,7 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      excludeKeywordsLengthBetween(
+  excludeKeywordsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -1077,53 +1085,52 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  idEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idLessThan(
+  idGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idBetween(
+  idLessThan(String value, {bool include = false, bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  idBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1131,191 +1138,195 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  idStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  idEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idContains(String value, {bool caseSensitive = true}) {
+  idContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'id',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'id',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idMatches(String pattern, {bool caseSensitive = true}) {
+  idMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'id',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'id',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idIsEmpty() {
+  idIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      idIsNotEmpty() {
+  idIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'id',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'id', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      isarIdEqualTo(Id value) {
+  isarIdEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isarId', value: value),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      isarIdGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  isarIdGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'isarId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      isarIdLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  isarIdLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'isarId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'isarId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      isarIdBetween(
+  isarIdBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'isarId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'isarId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  placePatternEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternLessThan(
+  placePatternGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternBetween(
+  placePatternLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  placePatternBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1323,135 +1334,140 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'placePattern',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'placePattern',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  placePatternStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  placePatternEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternContains(String value, {bool caseSensitive = true}) {
+  placePatternContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'placePattern',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'placePattern',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternMatches(String pattern, {bool caseSensitive = true}) {
+  placePatternMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'placePattern',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'placePattern',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternIsEmpty() {
+  placePatternIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'placePattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'placePattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      placePatternIsNotEmpty() {
+  placePatternIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'placePattern',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'placePattern', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sampleMessageEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageLessThan(
+  sampleMessageGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageBetween(
+  sampleMessageLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
+  sampleMessageBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1459,175 +1475,187 @@ extension SmsParsingRuleModelQueryFilter on QueryBuilder<SmsParsingRuleModel,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'sampleMessage',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'sampleMessage',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sampleMessageStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sampleMessageEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageContains(String value, {bool caseSensitive = true}) {
+  sampleMessageContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'sampleMessage',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'sampleMessage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageMatches(String pattern, {bool caseSensitive = true}) {
+  sampleMessageMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'sampleMessage',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'sampleMessage',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageIsEmpty() {
+  sampleMessageIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'sampleMessage',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'sampleMessage', value: ''),
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterFilterCondition>
-      sampleMessageIsNotEmpty() {
+  sampleMessageIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'sampleMessage',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'sampleMessage', value: ''),
+      );
     });
   }
 }
 
-extension SmsParsingRuleModelQueryObject on QueryBuilder<SmsParsingRuleModel,
-    SmsParsingRuleModel, QFilterCondition> {}
+extension SmsParsingRuleModelQueryObject
+    on
+        QueryBuilder<
+          SmsParsingRuleModel,
+          SmsParsingRuleModel,
+          QFilterCondition
+        > {}
 
-extension SmsParsingRuleModelQueryLinks on QueryBuilder<SmsParsingRuleModel,
-    SmsParsingRuleModel, QFilterCondition> {}
+extension SmsParsingRuleModelQueryLinks
+    on
+        QueryBuilder<
+          SmsParsingRuleModel,
+          SmsParsingRuleModel,
+          QFilterCondition
+        > {}
 
 extension SmsParsingRuleModelQuerySortBy
     on QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QSortBy> {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByAmountPattern() {
+  sortByAmountPattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amountPattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByAmountPatternDesc() {
+  sortByAmountPatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amountPattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByCardId() {
+  sortByCardId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cardId', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByCardIdDesc() {
+  sortByCardIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cardId', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByDatePattern() {
+  sortByDatePattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'datePattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByDatePatternDesc() {
+  sortByDatePatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'datePattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortById() {
+  sortById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByIdDesc() {
+  sortByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByPlacePattern() {
+  sortByPlacePattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'placePattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortByPlacePatternDesc() {
+  sortByPlacePatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'placePattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortBySampleMessage() {
+  sortBySampleMessage() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sampleMessage', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      sortBySampleMessageDesc() {
+  sortBySampleMessageDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sampleMessage', Sort.desc);
     });
@@ -1637,98 +1665,98 @@ extension SmsParsingRuleModelQuerySortBy
 extension SmsParsingRuleModelQuerySortThenBy
     on QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QSortThenBy> {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByAmountPattern() {
+  thenByAmountPattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amountPattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByAmountPatternDesc() {
+  thenByAmountPatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amountPattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByCardId() {
+  thenByCardId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cardId', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByCardIdDesc() {
+  thenByCardIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cardId', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByDatePattern() {
+  thenByDatePattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'datePattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByDatePatternDesc() {
+  thenByDatePatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'datePattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenById() {
+  thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByIdDesc() {
+  thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByIsarId() {
+  thenByIsarId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isarId', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByIsarIdDesc() {
+  thenByIsarIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isarId', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByPlacePattern() {
+  thenByPlacePattern() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'placePattern', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenByPlacePatternDesc() {
+  thenByPlacePatternDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'placePattern', Sort.desc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenBySampleMessage() {
+  thenBySampleMessage() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sampleMessage', Sort.asc);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QAfterSortBy>
-      thenBySampleMessageDesc() {
+  thenBySampleMessageDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sampleMessage', Sort.desc);
     });
@@ -1738,53 +1766,57 @@ extension SmsParsingRuleModelQuerySortThenBy
 extension SmsParsingRuleModelQueryWhereDistinct
     on QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct> {
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctByAmountPattern({bool caseSensitive = true}) {
+  distinctByAmountPattern({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'amountPattern',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'amountPattern',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctByCardId({bool caseSensitive = true}) {
+  distinctByCardId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'cardId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctByDatePattern({bool caseSensitive = true}) {
+  distinctByDatePattern({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'datePattern', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctByExcludeKeywords() {
+  distinctByExcludeKeywords() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'excludeKeywords');
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctById({bool caseSensitive = true}) {
+  distinctById({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'id', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctByPlacePattern({bool caseSensitive = true}) {
+  distinctByPlacePattern({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'placePattern', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, SmsParsingRuleModel, QDistinct>
-      distinctBySampleMessage({bool caseSensitive = true}) {
+  distinctBySampleMessage({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'sampleMessage',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'sampleMessage',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 }
@@ -1798,7 +1830,7 @@ extension SmsParsingRuleModelQueryProperty
   }
 
   QueryBuilder<SmsParsingRuleModel, String, QQueryOperations>
-      amountPatternProperty() {
+  amountPatternProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'amountPattern');
     });
@@ -1811,14 +1843,14 @@ extension SmsParsingRuleModelQueryProperty
   }
 
   QueryBuilder<SmsParsingRuleModel, String?, QQueryOperations>
-      datePatternProperty() {
+  datePatternProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'datePattern');
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, List<String>, QQueryOperations>
-      excludeKeywordsProperty() {
+  excludeKeywordsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'excludeKeywords');
     });
@@ -1831,14 +1863,14 @@ extension SmsParsingRuleModelQueryProperty
   }
 
   QueryBuilder<SmsParsingRuleModel, String, QQueryOperations>
-      placePatternProperty() {
+  placePatternProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'placePattern');
     });
   }
 
   QueryBuilder<SmsParsingRuleModel, String, QQueryOperations>
-      sampleMessageProperty() {
+  sampleMessageProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sampleMessage');
     });

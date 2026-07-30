@@ -365,7 +365,7 @@ class _CardFormScreenState extends ConsumerState<CardFormScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Linking the SMS Sender ID allows ExpenseTracker to automatically categorize transactions from bank notifications.',
+                            'Linking the SMS Sender ID allows Expense Tracker to automatically categorize transactions from bank notifications.',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium

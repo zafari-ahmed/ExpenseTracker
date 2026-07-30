@@ -17,7 +17,7 @@
         android:maxSdkVersion="32"/>
 
     <application
-        android:label="expense_tracker"
+        android:label="Expense Tracker"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -78,7 +78,7 @@ class _StartupScreenState extends ConsumerState<StartupScreen>
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'ExpenseTracker',
+                  'Expense Tracker',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w800,

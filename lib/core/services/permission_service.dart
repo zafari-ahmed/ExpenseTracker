@@ -15,6 +15,13 @@ class PermissionRequestResult {
 }
 
 class PermissionService {
+  /// Prefer this over telephony.requestSmsPermissions — that plugin crashes
+  /// with "Reply already submitted" on many Android versions.
+  Future<bool> isSmsGranted() async {
+    if (!Platform.isAndroid) return false;
+    return Permission.sms.isGranted;
+  }
+
   Future<PermissionRequestResult> requestAppPermissions() async {
     final List<Permission> permissions = <Permission>[
       Permission.notification,

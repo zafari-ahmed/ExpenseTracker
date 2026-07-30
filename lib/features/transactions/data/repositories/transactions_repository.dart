@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/isar_instance.dart';
@@ -81,6 +81,12 @@ class TransactionsRepository {
     }
     await _isar.writeTxn(() async {
       await _isar.transactionModels.delete(row.isarId);
+    });
+  }
+
+  Future<int> deleteAllForCard(String cardId) async {
+    return _isar.writeTxn(() async {
+      return _isar.transactionModels.filter().cardIdEqualTo(cardId).deleteAll();
     });
   }
 

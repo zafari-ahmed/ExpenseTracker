@@ -2,10 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../providers/cards_provider.dart';
 
 class CardSetupScreen extends ConsumerWidget {
   const CardSetupScreen({super.key});
+
+  Future<void> _deleteAllTransactions(
+    BuildContext context,
+    WidgetRef ref, {
+    required String cardId,
+    required String cardName,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete all transactions?'),
+        content: Text(
+          'This permanently deletes every transaction for "$cardName". This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete all'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final deleted =
+        await ref.read(transactionMutationsProvider).deleteAllForCard(cardId);
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted == 0
+              ? 'No transactions found for this card'
+              : 'Deleted $deleted transaction(s) for $cardName',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -61,22 +105,31 @@ class CardSetupScreen extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           child: Text(
-                            card.bankName.isNotEmpty ? card.bankName.characters.first : '?',
+                            card.bankName.isNotEmpty
+                                ? card.bankName.characters.first
+                                : '?',
                           ),
                         ),
                         title: Text(card.cardName),
-                        subtitle: Text('${card.bankName} • Sender: ${card.smsSenderId}'),
+                        subtitle: Text(
+                          '${card.bankName} • Sender: ${card.smsSenderId}',
+                        ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (value) async {
                             if (value == 'edit') {
                               context.push('/cards/form?cardId=${card.id}');
                             } else if (value == 'delete') {
-                              await ref.read(cardMutationsProvider).deleteCard(card.id);
+                              await ref
+                                  .read(cardMutationsProvider)
+                                  .deleteCard(card.id);
                             }
                           },
                           itemBuilder: (context) => const [
                             PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
                           ],
                         ),
                       ),
@@ -92,14 +145,30 @@ class CardSetupScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.tonalIcon(
-                          onPressed: () =>
-                              context.push('/cards/sms-config?cardId=${card.id}'),
-                          icon: const Icon(Icons.sms_outlined),
-                          label: Text(hasRule ? 'Edit SMS Sample' : 'Add Sample SMS'),
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => _deleteAllTransactions(
+                              context,
+                              ref,
+                              cardId: card.id,
+                              cardName: card.cardName,
+                            ),
+                            icon: const Icon(Icons.delete_sweep_outlined),
+                            label: const Text('Delete all transactions'),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: () => context
+                                .push('/cards/sms-config?cardId=${card.id}'),
+                            icon: const Icon(Icons.sms_outlined),
+                            label: Text(
+                              hasRule ? 'Edit SMS Sample' : 'Add Sample SMS',
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

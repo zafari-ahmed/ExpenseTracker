@@ -56,7 +56,7 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     ref.watch(smsSyncTickProvider);
 
     return MaterialApp.router(
-      title: 'ExpenseTracker',
+      title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
