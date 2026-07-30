@@ -43,7 +43,7 @@ class SettingsScreen extends ConsumerWidget {
             108,
           ),
           children: [
-            const EtAppHeader(),
+            const EtAppHeader(showCalendar: false),
             EtSurfaceCard(
               elevated: false,
               child: Column(

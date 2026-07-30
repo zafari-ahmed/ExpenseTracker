@@ -57,7 +57,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 120,
               ),
               children: [
-                const EtAppHeader(showCalendar: true),
+                const EtAppHeader(showCalendar: false),
                 EtSurfaceCard(
                   radius: AppRadii.input,
                   padding: const EdgeInsets.all(8),
