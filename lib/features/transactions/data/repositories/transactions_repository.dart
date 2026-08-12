@@ -36,6 +36,38 @@ class TransactionsRepository {
     await upsertTransaction(current);
   }
 
+  /// Applies [category] to other Uncategorized rows with the same place.
+  Future<int> applyCategoryToUncategorizedPlace({
+    required String place,
+    required String category,
+    String? excludeTransactionId,
+  }) async {
+    final needle = place.trim().toLowerCase();
+    if (needle.isEmpty) return 0;
+    if (category.trim().isEmpty ||
+        category.trim().toLowerCase() == 'uncategorized') {
+      return 0;
+    }
+
+    final rows = await listTransactions();
+    var updated = 0;
+    for (final row in rows) {
+      if (excludeTransactionId != null && row.id == excludeTransactionId) {
+        continue;
+      }
+      if (row.category.trim().toLowerCase() != 'uncategorized') {
+        continue;
+      }
+      if (row.place.trim().toLowerCase() != needle) {
+        continue;
+      }
+      row.category = category;
+      await upsertTransaction(row);
+      updated++;
+    }
+    return updated;
+  }
+
   Future<TransactionModel?> getById(String transactionId) {
     return _isar.transactionModels.filter().idEqualTo(transactionId).findFirst();
   }

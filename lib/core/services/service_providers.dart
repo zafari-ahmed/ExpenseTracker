@@ -42,6 +42,7 @@ final smsPipelineServiceProvider = FutureProvider<SmsPipelineService>((ref) asyn
 final thresholdAlertServiceProvider = FutureProvider<ThresholdAlertService>((ref) async {
   final categoryRepo = await ref.watch(categoriesRepositoryProvider.future);
   final txRepo = await ref.watch(transactionsRepositoryProvider.future);
+  final cardsRepo = await ref.watch(cardsRepositoryProvider.future);
   final notification = ref.watch(notificationServiceProvider);
   final preferences = ref.watch(appPreferencesServiceProvider);
   return ThresholdAlertService(
@@ -49,5 +50,6 @@ final thresholdAlertServiceProvider = FutureProvider<ThresholdAlertService>((ref
     transactionsRepository: txRepo,
     notificationService: notification,
     preferencesService: preferences,
+    cardsRepository: cardsRepo,
   );
 });

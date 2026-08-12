@@ -23,6 +23,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   String? _category;
   bool _saving = false;
   bool _smsExpanded = false;
+  bool _rememberForFuture = true;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
     _descriptionCtrl =
         TextEditingController(text: widget.transaction.description);
     _category = widget.transaction.category;
+    _placeCtrl.addListener(() => setState(() {}));
   }
 
   @override
@@ -67,6 +69,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
           place: place,
           description: description,
           category: category,
+          rememberForFuture: _rememberForFuture,
         );
   }
 
@@ -213,6 +216,20 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
               },
               error: (e, s) => Text('Error: $e'),
               loading: () => const LinearProgressIndicator(),
+            ),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _rememberForFuture,
+              onChanged: (value) =>
+                  setState(() => _rememberForFuture = value ?? true),
+              title: const Text('Remember for future transactions'),
+              subtitle: Text(
+                _placeCtrl.text.trim().isEmpty
+                    ? 'Saves this place → category for new SMS'
+                    : 'Future "${_placeCtrl.text.trim()}" SMS go to ${_category ?? 'category'}',
+              ),
+              controlAffinity: ListTileControlAffinity.leading,
             ),
             const SizedBox(height: 16),
             SizedBox(

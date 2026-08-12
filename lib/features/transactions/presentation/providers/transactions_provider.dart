@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/service_providers.dart';
 import '../../../categories/data/repositories/categories_repository.dart';
+import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/transactions_repository.dart';
 
@@ -105,6 +106,7 @@ class TransactionMutations {
     required String place,
     required String description,
     required String category,
+    bool rememberForFuture = true,
   }) async {
     final repo = await _ref.read(transactionsRepositoryProvider.future);
     await repo.updateTransactionDetails(
@@ -113,7 +115,28 @@ class TransactionMutations {
       description: description,
       category: category,
     );
+
+    if (rememberForFuture) {
+      final categoryRepo = await _ref.read(categoriesRepositoryProvider.future);
+      await categoryRepo.learnPlaceForCategory(
+        place: place,
+        categoryName: category,
+      );
+      await repo.applyCategoryToUncategorizedPlace(
+        place: place,
+        category: category,
+        excludeTransactionId: transactionId,
+      );
+      _ref.invalidate(categoriesProvider);
+    }
+
     _refresh();
+  }
+
+  Future<void> removeNeedsReview(String reviewId) async {
+    final repo = await _ref.read(transactionsRepositoryProvider.future);
+    await repo.removeNeedsReview(reviewId);
+    _ref.invalidate(needsReviewProvider);
   }
 
   Future<void> delete(String transactionId) async {

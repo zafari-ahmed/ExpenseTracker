@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/data/models/card_model.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../settings/presentation/providers/profile_provider.dart';
 import '../../../transactions/data/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
@@ -27,14 +29,41 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
+  int _defaultBillDay(List<CardModel> cards) {
+    if (cards.isEmpty) return 1;
+    return cards.first.billDate;
+  }
+
+  Map<String, int> _billDayByCard(List<CardModel> cards) {
+    return {for (final c in cards) c.id: c.billDate};
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(dashboardMonthProvider);
     final cardsAsync = ref.watch(activeCardsProvider);
+    final allCardsAsync = ref.watch(cardsListProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
     final txAsync = ref.watch(transactionsListProvider);
+    final periodMode =
+        ref.watch(spendPeriodModeProvider).valueOrNull ?? SpendPeriodMode.monthly;
     final profileName = ref.watch(profileNameProvider).valueOrNull ?? 'Member';
-    final monthLabel = DateFormat('MMMM yyyy').format(month);
+    final activeCards = cardsAsync.valueOrNull ?? const <CardModel>[];
+    final allCards = allCardsAsync.valueOrNull ?? activeCards;
+    final billDay = _defaultBillDay(activeCards);
+    final billDays = _billDayByCard(allCards);
+    final anchor = PeriodHelper.resolveAnchor(
+      selectedMonth: month,
+      mode: periodMode,
+    );
+    final period = PeriodHelper.forMode(
+      mode: periodMode,
+      anchor: anchor,
+      billDay: billDay,
+    );
+    final periodLabel = periodMode == SpendPeriodMode.monthly
+        ? DateFormat('MMMM yyyy').format(month)
+        : period.monthStyleLabel;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,6 +77,7 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(needsReviewProvider);
             ref.invalidate(thresholdsProvider);
             ref.invalidate(categoryThresholdStatusesProvider);
+            ref.invalidate(spendPeriodModeProvider);
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -55,7 +85,7 @@ class DashboardScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: EtAppHeader(
                   greeting: etGreeting(profileName.split(' ').first),
-                  subtitle: monthLabel,
+                  subtitle: periodLabel,
                   onCalendarTap: () => _pickMonth(context, ref),
                   onSubtitleTap: () => _pickMonth(context, ref),
                   onAvatarTap: () => context.go('/settings'),
@@ -72,10 +102,23 @@ class DashboardScreen extends ConsumerWidget {
                   delegate: SliverChildListDelegate([
                     txAsync.when(
                       data: (rows) {
-                        final monthRows = _rowsForMonth(rows, month);
-                        final prevRows = _rowsForMonth(
+                        final monthRows = _rowsForPeriod(
                           rows,
-                          DateTime(month.year, month.month - 1),
+                          mode: periodMode,
+                          anchor: anchor,
+                          billDayByCardId: billDays,
+                          fallbackBillDay: billDay,
+                        );
+                        final prevAnchor = PeriodHelper.resolveAnchor(
+                          selectedMonth: PeriodHelper.shiftAnchor(month, -1),
+                          mode: periodMode,
+                        );
+                        final prevRows = _rowsForPeriod(
+                          rows,
+                          mode: periodMode,
+                          anchor: prevAnchor,
+                          billDayByCardId: billDays,
+                          fallbackBillDay: billDay,
                         );
                         final total = monthRows.fold<double>(
                           0,
@@ -92,7 +135,11 @@ class DashboardScreen extends ConsumerWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const EtLabelCaps('Total spend this month'),
+                            EtLabelCaps(
+                              periodMode == SpendPeriodMode.billingCycle
+                                  ? 'Total spend this billing cycle'
+                                  : 'Total spend this month',
+                            ),
                             const SizedBox(height: 6),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
@@ -171,7 +218,8 @@ class DashboardScreen extends ConsumerWidget {
                                 return _AccountCard(
                                   card: cards[index],
                                   rows: rows,
-                                  month: month,
+                                  anchor: anchor,
+                                  periodMode: periodMode,
                                 );
                               },
                             ),
@@ -226,7 +274,13 @@ class DashboardScreen extends ConsumerWidget {
                       actionLabel: 'Add',
                       onAction: () => context.push('/categories'),
                     ),
-                    _CategorySummaryRow(ref: ref, month: month),
+                    _CategorySummaryRow(
+                      ref: ref,
+                      anchor: anchor,
+                      periodMode: periodMode,
+                      billDayByCardId: billDays,
+                      fallbackBillDay: billDay,
+                    ),
                     const SizedBox(height: AppSpacing.section),
                     const ThresholdProgressSection(),
                     const SizedBox(height: AppSpacing.section),
@@ -237,12 +291,22 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     txAsync.when(
                       data: (rows) {
-                        final monthRows = _rowsForMonth(rows, month);
+                        final monthRows = _rowsForPeriod(
+                          rows,
+                          mode: periodMode,
+                          anchor: anchor,
+                          billDayByCardId: billDays,
+                          fallbackBillDay: billDay,
+                        );
                         if (monthRows.isEmpty) {
-                          return const Text('No transactions this month yet.');
+                          return Text(
+                            periodMode == SpendPeriodMode.billingCycle
+                                ? 'No transactions this billing cycle yet.'
+                                : 'No transactions this month yet.',
+                          );
                         }
                         final recent = monthRows.take(5).toList();
-                        final dateFmt = DateFormat('MMM d, h:mm a');
+                        final dateFmt = DateFormat('MMM d');
                         return Column(
                           children: [
                             for (final row in recent) ...[
@@ -272,15 +336,21 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-List<TransactionModel> _rowsForMonth(
-  List<TransactionModel> rows,
-  DateTime month,
-) {
+List<TransactionModel> _rowsForPeriod(
+  List<TransactionModel> rows, {
+  required SpendPeriodMode mode,
+  required DateTime anchor,
+  required Map<String, int> billDayByCardId,
+  int fallbackBillDay = 1,
+}) {
   return rows
       .where(
-        (e) =>
-            e.transactionDate.year == month.year &&
-            e.transactionDate.month == month.month,
+        (e) => PeriodHelper.isInPeriod(
+          date: e.transactionDate,
+          mode: mode,
+          anchor: anchor,
+          billDay: billDayByCardId[e.cardId] ?? fallbackBillDay,
+        ),
       )
       .toList();
 }
@@ -289,23 +359,26 @@ class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.card,
     required this.rows,
-    required this.month,
+    required this.anchor,
+    required this.periodMode,
   });
 
   final CardModel card;
   final List<TransactionModel> rows;
-  final DateTime month;
+  final DateTime anchor;
+  final SpendPeriodMode periodMode;
 
   @override
   Widget build(BuildContext context) {
     final digits = card.lastFourDigits ?? '----';
     final cardRows = rows.where((r) => r.cardId == card.id).toList();
+    final period = PeriodHelper.forMode(
+      mode: periodMode,
+      anchor: anchor,
+      billDay: card.billDate,
+    );
     final monthSpend = cardRows
-        .where(
-          (r) =>
-              r.transactionDate.year == month.year &&
-              r.transactionDate.month == month.month,
-        )
+        .where((r) => period.contains(r.transactionDate))
         .fold<double>(0, (a, b) => a + b.amount);
 
     final spark = <double>[];
@@ -421,10 +494,19 @@ class _AccountCard extends StatelessWidget {
 }
 
 class _CategorySummaryRow extends StatelessWidget {
-  const _CategorySummaryRow({required this.ref, required this.month});
+  const _CategorySummaryRow({
+    required this.ref,
+    required this.anchor,
+    required this.periodMode,
+    required this.billDayByCardId,
+    required this.fallbackBillDay,
+  });
 
   final WidgetRef ref;
-  final DateTime month;
+  final DateTime anchor;
+  final SpendPeriodMode periodMode;
+  final Map<String, int> billDayByCardId;
+  final int fallbackBillDay;
 
   @override
   Widget build(BuildContext context) {
@@ -433,9 +515,19 @@ class _CategorySummaryRow extends StatelessWidget {
 
     return txAsync.when(
       data: (rows) {
-        final monthRows = _rowsForMonth(rows, month);
+        final monthRows = _rowsForPeriod(
+          rows,
+          mode: periodMode,
+          anchor: anchor,
+          billDayByCardId: billDayByCardId,
+          fallbackBillDay: fallbackBillDay,
+        );
         if (monthRows.isEmpty) {
-          return const Text('No transactions this month yet.');
+          return Text(
+            periodMode == SpendPeriodMode.billingCycle
+                ? 'No transactions this billing cycle yet.'
+                : 'No transactions this month yet.',
+          );
         }
 
         final totals = <String, double>{};
@@ -528,4 +620,3 @@ class _CategorySummaryRow extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,7 @@
 import '../../features/categories/data/repositories/categories_repository.dart';
+import '../../features/cards/data/repositories/cards_repository.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
+import '../utils/period_range.dart';
 import 'app_preferences_service.dart';
 import 'notification_service.dart';
 
@@ -9,12 +11,14 @@ class ThresholdAlertService {
     required this.transactionsRepository,
     required this.notificationService,
     required this.preferencesService,
+    required this.cardsRepository,
   });
 
   final CategoriesRepository categoriesRepository;
   final TransactionsRepository transactionsRepository;
   final NotificationService notificationService;
   final AppPreferencesService preferencesService;
+  final CardsRepository cardsRepository;
 
   Future<void> checkForCategoryThreshold({
     required String categoryName,
@@ -34,14 +38,31 @@ class ThresholdAlertService {
       return;
     }
 
-    final monthStart = DateTime(forMonth.year, forMonth.month);
-    final monthEnd = DateTime(forMonth.year, forMonth.month + 1).subtract(const Duration(milliseconds: 1));
+    final mode = await preferencesService.spendPeriodMode();
+    final cards = await cardsRepository.getCards();
+    final billDayByCardId = <String, int>{
+      for (final c in cards) c.id: c.billDate,
+    };
+    final fallbackBillDay = cards.isEmpty ? 1 : cards.first.billDate;
+    final selectedMonth = DateTime(forMonth.year, forMonth.month);
+    final anchor = PeriodHelper.resolveAnchor(
+      selectedMonth: selectedMonth,
+      mode: mode,
+    );
+
     final rows = await transactionsRepository.listTransactions(
       category: categoryName,
-      fromDate: monthStart,
-      toDate: monthEnd,
     );
-    final total = rows.fold<double>(0, (sum, tx) => sum + tx.amount);
+    final total = rows
+        .where(
+          (tx) => PeriodHelper.isInPeriod(
+            date: tx.transactionDate,
+            mode: mode,
+            anchor: anchor,
+            billDay: billDayByCardId[tx.cardId] ?? fallbackBillDay,
+          ),
+        )
+        .fold<double>(0, (sum, tx) => sum + tx.amount);
     final percent = ((total / threshold.monthlyLimit) * 100).floor();
     if (percent >= threshold.notifyAtPercent) {
       await notificationService.showThresholdAlert(

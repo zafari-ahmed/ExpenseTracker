@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/period_range.dart';
+
 class AppPreferencesService {
   static const _billReminderEnabled = 'bill_reminder_enabled';
   static const _thresholdAlertsEnabled = 'threshold_alerts_enabled';
@@ -8,6 +10,7 @@ class AppPreferencesService {
   static const _profileImagePath = 'profile_image_path';
   static const _profileName = 'profile_name';
   static const _lastSmsScanMillis = 'last_sms_scan_millis';
+  static const _spendPeriodMode = 'spend_period_mode';
 
   Future<bool> billReminderEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,6 +93,16 @@ class AppPreferencesService {
   Future<void> setBillLeadDays(int value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_billLeadDays, value);
+  }
+
+  Future<SpendPeriodMode> spendPeriodMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return SpendPeriodModeX.fromStorage(prefs.getString(_spendPeriodMode));
+  }
+
+  Future<void> setSpendPeriodMode(SpendPeriodMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_spendPeriodMode, mode.storageValue);
   }
 
   static const _customSmsIgnoreList = 'custom_sms_ignore_list';

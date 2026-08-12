@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/period_range.dart';
+import '../../../cards/data/models/card_model.dart';
+import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../categories/data/models/category_model.dart';
-import '../../../categories/data/models/category_threshold_model.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
 
 enum ThresholdLevel {
@@ -39,15 +42,28 @@ final categoryThresholdStatusesProvider =
   final categories = await ref.watch(categoriesProvider.future);
   final thresholds = await ref.watch(thresholdsProvider.future);
   final transactions = await ref.watch(transactionsListProvider.future);
-
+  final periodMode = await ref.watch(spendPeriodModeProvider.future);
+  final cards = await ref.watch(cardsListProvider.future);
+  final billDayByCardId = <String, int>{
+    for (final CardModel c in cards) c.id: c.billDate,
+  };
+  final fallbackBillDay = cards.isEmpty ? 1 : cards.first.billDate;
   final now = DateTime.now();
-  final monthStart = DateTime(now.year, now.month);
-  final monthEnd = DateTime(now.year, now.month + 1);
+  final selectedMonth = DateTime(now.year, now.month);
+  final anchor = PeriodHelper.resolveAnchor(
+    selectedMonth: selectedMonth,
+    mode: periodMode,
+  );
 
   final spentByCategory = <String, double>{};
   for (final tx in transactions) {
-    if (tx.transactionDate.isBefore(monthStart) ||
-        !tx.transactionDate.isBefore(monthEnd)) {
+    final billDay = billDayByCardId[tx.cardId] ?? fallbackBillDay;
+    if (!PeriodHelper.isInPeriod(
+      date: tx.transactionDate,
+      mode: periodMode,
+      anchor: anchor,
+      billDay: billDay,
+    )) {
       continue;
     }
     spentByCategory[tx.category] =

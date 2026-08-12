@@ -8,6 +8,7 @@ import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../categories/data/models/category_threshold_model.dart';
@@ -292,6 +293,42 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             _SettingsGroup(
               children: [
+                ref.watch(spendPeriodModeProvider).when(
+                  data: (mode) => _SettingsRow(
+                    icon: Icons.date_range_outlined,
+                    title: 'Spend period',
+                    subtitle: mode == SpendPeriodMode.billingCycle
+                        ? 'Billing cycle (from each card bill date)'
+                        : 'Calendar month',
+                    trailing: Text(
+                      mode == SpendPeriodMode.billingCycle
+                          ? 'Billing'
+                          : 'Monthly',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () async {
+                      final next = mode == SpendPeriodMode.monthly
+                          ? SpendPeriodMode.billingCycle
+                          : SpendPeriodMode.monthly;
+                      await ref
+                          .read(appPreferencesServiceProvider)
+                          .setSpendPeriodMode(next);
+                      ref.invalidate(spendPeriodModeProvider);
+                      ref.invalidate(categoryThresholdStatusesProvider);
+                      ref.invalidate(thisMonthTotalProvider);
+                    },
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (e, _) => _SettingsRow(
+                    icon: Icons.date_range_outlined,
+                    title: 'Spend period',
+                    subtitle: 'Error loading preference',
+                    onTap: null,
+                  ),
+                ),
                 _SettingsRow(
                   icon: Icons.dark_mode_outlined,
                   title: 'Theme',

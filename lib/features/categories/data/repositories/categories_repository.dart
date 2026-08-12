@@ -44,17 +44,73 @@ class CategoriesRepository {
   }
 
   Future<CategoryModel?> autoCategoryFromPlace(String place) async {
-    final needle = place.toLowerCase();
+    final needle = place.toLowerCase().trim();
+    if (needle.isEmpty) {
+      return getByName('Uncategorized');
+    }
     final categories = await getCategories();
+
+    // Prefer longer keyword matches so "kfc" wins over short accidental hits.
+    CategoryModel? best;
+    var bestLen = 0;
     for (final category in categories) {
-      final matched = category.keywords.any(
-        (keyword) => needle.contains(keyword.toLowerCase()),
-      );
-      if (matched) {
-        return category;
+      for (final keyword in category.keywords) {
+        final key = keyword.toLowerCase().trim();
+        if (key.isEmpty) continue;
+        if (needle.contains(key) && key.length > bestLen) {
+          best = category;
+          bestLen = key.length;
+        }
       }
     }
+    if (best != null) {
+      return best;
+    }
     return getByName('Uncategorized');
+  }
+
+  /// Saves [place] as a keyword on [categoryName] so future SMS auto-categorize.
+  /// Also removes the same keyword from other categories to avoid conflicts.
+  Future<void> learnPlaceForCategory({
+    required String place,
+    required String categoryName,
+  }) async {
+    final keyword = place.trim().toLowerCase();
+    if (keyword.isEmpty) return;
+    if (categoryName.trim().isEmpty ||
+        categoryName.trim().toLowerCase() == 'uncategorized') {
+      return;
+    }
+
+    final categories = await getCategories();
+    CategoryModel? target;
+    for (final category in categories) {
+      final isTarget =
+          category.name.trim().toLowerCase() == categoryName.trim().toLowerCase();
+      if (isTarget) {
+        target = category;
+        continue;
+      }
+      final had = category.keywords.any(
+        (k) => k.trim().toLowerCase() == keyword,
+      );
+      if (!had) continue;
+      category.keywords = category.keywords
+          .where((k) => k.trim().toLowerCase() != keyword)
+          .toList();
+      await upsertCategory(category);
+    }
+
+    target ??= await getByName(categoryName);
+    if (target == null) return;
+
+    final already = target.keywords.any(
+      (k) => k.trim().toLowerCase() == keyword,
+    );
+    if (!already) {
+      target.keywords = <String>[...target.keywords, keyword];
+      await upsertCategory(target);
+    }
   }
 
   Future<List<CategoryThresholdModel>> getThresholds() {

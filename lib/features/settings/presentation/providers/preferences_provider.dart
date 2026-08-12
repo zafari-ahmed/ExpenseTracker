@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/service_providers.dart';
+import '../../../../core/utils/period_range.dart';
 
 class NotificationPrefs {
   NotificationPrefs({
@@ -24,4 +25,9 @@ final notificationPrefsProvider = FutureProvider<NotificationPrefs>((ref) async 
     summaryPushEnabled: await prefs.summaryPushEnabled(),
     billLeadDays: await prefs.billLeadDays(),
   );
+});
+
+final spendPeriodModeProvider = FutureProvider<SpendPeriodMode>((ref) async {
+  final prefs = ref.watch(appPreferencesServiceProvider);
+  return prefs.spendPeriodMode();
 });

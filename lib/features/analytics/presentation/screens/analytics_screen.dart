@@ -4,7 +4,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../cards/data/models/card_model.dart';
+import '../../../cards/presentation/providers/cards_provider.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../transactions/data/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
 
@@ -16,13 +20,61 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
-  DateTime _month = DateTime.now();
+  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
   bool _donutView = true;
+
+  int _defaultBillDay(List<CardModel> cards) {
+    if (cards.isEmpty) return 1;
+    return cards.first.billDate;
+  }
+
+  Map<String, int> _billDays(List<CardModel> cards) {
+    return {for (final c in cards) c.id: c.billDate};
+  }
+
+  List<TransactionModel> _rowsForPeriod(
+    List<TransactionModel> rows, {
+    required SpendPeriodMode mode,
+    required DateTime selectedMonth,
+    required Map<String, int> billDayByCardId,
+    required int fallbackBillDay,
+  }) {
+    final anchor = PeriodHelper.resolveAnchor(
+      selectedMonth: selectedMonth,
+      mode: mode,
+    );
+    return rows
+        .where(
+          (e) => PeriodHelper.isInPeriod(
+            date: e.transactionDate,
+            mode: mode,
+            anchor: anchor,
+            billDay: billDayByCardId[e.cardId] ?? fallbackBillDay,
+          ),
+        )
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final txAsync = ref.watch(transactionsListProvider);
-    final monthLabel = DateFormat('MMMM yyyy').format(_month);
+    final periodMode =
+        ref.watch(spendPeriodModeProvider).valueOrNull ?? SpendPeriodMode.monthly;
+    final cards = ref.watch(cardsListProvider).valueOrNull ?? const <CardModel>[];
+    final billDay = _defaultBillDay(cards);
+    final billDays = _billDays(cards);
+    final anchor = PeriodHelper.resolveAnchor(
+      selectedMonth: _month,
+      mode: periodMode,
+    );
+    final period = PeriodHelper.forMode(
+      mode: periodMode,
+      anchor: anchor,
+      billDay: billDay,
+    );
+    final monthLabel = periodMode == SpendPeriodMode.monthly
+        ? DateFormat('MMMM yyyy').format(_month)
+        : period.monthStyleLabel;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -30,13 +82,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         bottom: false,
         child: txAsync.when(
           data: (rows) {
-            final monthRows = rows
-                .where(
-                  (e) =>
-                      e.transactionDate.year == _month.year &&
-                      e.transactionDate.month == _month.month,
-                )
-                .toList();
+            final monthRows = _rowsForPeriod(
+              rows,
+              mode: periodMode,
+              selectedMonth: _month,
+              billDayByCardId: billDays,
+              fallbackBillDay: billDay,
+            );
 
             final byCategory = <String, double>{};
             for (final row in monthRows) {
@@ -74,7 +126,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            const EtLabelCaps('Current period'),
+                            EtLabelCaps(
+                              periodMode == SpendPeriodMode.billingCycle
+                                  ? 'Billing cycle'
+                                  : 'Current period',
+                            ),
                             Text(
                               monthLabel,
                               style: Theme.of(context)
@@ -125,8 +181,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   SizedBox(
                     height: 280,
                     child: sections.isEmpty
-                        ? const Center(
-                            child: Text('No chart data for this month'),
+                        ? Center(
+                            child: Text(
+                              periodMode == SpendPeriodMode.billingCycle
+                                  ? 'No chart data for this billing cycle'
+                                  : 'No chart data for this month',
+                            ),
                           )
                         : Stack(
                             alignment: Alignment.center,
@@ -191,14 +251,26 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
-                                final month = DateTime(
+                                final selected = DateTime(
                                   DateTime.now().year,
                                   DateTime.now().month - (5 - value.toInt()),
                                 );
+                                final labelAnchor = PeriodHelper.resolveAnchor(
+                                  selectedMonth: selected,
+                                  mode: periodMode,
+                                );
+                                final labelPeriod = PeriodHelper.forMode(
+                                  mode: periodMode,
+                                  anchor: labelAnchor,
+                                  billDay: billDay,
+                                );
+                                final text = periodMode == SpendPeriodMode.monthly
+                                    ? DateFormat('MMM').format(selected).toUpperCase()
+                                    : DateFormat('dd/MM').format(labelPeriod.start);
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8),
                                   child: Text(
-                                    DateFormat('MMM').format(month).toUpperCase(),
+                                    text,
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
@@ -220,6 +292,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 DateTime.now().month - i,
                               ),
                               5 - i,
+                              mode: periodMode,
+                              billDayByCardId: billDays,
+                              fallbackBillDay: billDay,
                             ),
                         ],
                       ),
@@ -229,7 +304,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 const EtLabelCaps('Category details'),
                 const SizedBox(height: 12),
                 if (sections.isEmpty)
-                  const Text('No category spend for this month.')
+                  Text(
+                    periodMode == SpendPeriodMode.billingCycle
+                        ? 'No category spend for this billing cycle.'
+                        : 'No category spend for this month.',
+                  )
                 else
                   ...sections.map((e) {
                     final pct = total == 0 ? 0.0 : (e.value / total) * 100;
@@ -281,7 +360,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     );
                   }),
                 const SizedBox(height: AppSpacing.md),
-                _InsightCard(rows: rows, month: _month),
+                _InsightCard(
+                  rows: rows,
+                  selectedMonth: _month,
+                  periodMode: periodMode,
+                  billDayByCardId: billDays,
+                  fallbackBillDay: billDay,
+                ),
               ],
             );
           },
@@ -294,16 +379,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   BarChartGroupData _barGroup(
     List<TransactionModel> rows,
-    DateTime month,
-    int x,
-  ) {
-    double total = 0;
-    for (final row in rows) {
-      if (row.transactionDate.year == month.year &&
-          row.transactionDate.month == month.month) {
-        total += row.amount;
-      }
-    }
+    DateTime selectedMonth,
+    int x, {
+    required SpendPeriodMode mode,
+    required Map<String, int> billDayByCardId,
+    required int fallbackBillDay,
+  }) {
+    final periodRows = _rowsForPeriod(
+      rows,
+      mode: mode,
+      selectedMonth: selectedMonth,
+      billDayByCardId: billDayByCardId,
+      fallbackBillDay: fallbackBillDay,
+    );
+    final total = periodRows.fold<double>(0, (a, b) => a + b.amount);
     return BarChartGroupData(
       x: x,
       barRods: [
@@ -362,42 +451,70 @@ class _Segment extends StatelessWidget {
 }
 
 class _InsightCard extends StatelessWidget {
-  const _InsightCard({required this.rows, required this.month});
+  const _InsightCard({
+    required this.rows,
+    required this.selectedMonth,
+    required this.periodMode,
+    required this.billDayByCardId,
+    required this.fallbackBillDay,
+  });
 
   final List<TransactionModel> rows;
-  final DateTime month;
+  final DateTime selectedMonth;
+  final SpendPeriodMode periodMode;
+  final Map<String, int> billDayByCardId;
+  final int fallbackBillDay;
 
   @override
   Widget build(BuildContext context) {
-    final prev = DateTime(month.year, month.month - 1);
+    final prevMonth = DateTime(selectedMonth.year, selectedMonth.month - 1);
     double current = 0;
     double previous = 0;
+    final currentAnchor = PeriodHelper.resolveAnchor(
+      selectedMonth: selectedMonth,
+      mode: periodMode,
+    );
+    final prevAnchor = PeriodHelper.resolveAnchor(
+      selectedMonth: prevMonth,
+      mode: periodMode,
+    );
     for (final row in rows) {
-      if (row.transactionDate.year == month.year &&
-          row.transactionDate.month == month.month) {
+      final billDay = billDayByCardId[row.cardId] ?? fallbackBillDay;
+      if (PeriodHelper.isInPeriod(
+        date: row.transactionDate,
+        mode: periodMode,
+        anchor: currentAnchor,
+        billDay: billDay,
+      )) {
         current += row.amount;
       }
-      if (row.transactionDate.year == prev.year &&
-          row.transactionDate.month == prev.month) {
+      if (PeriodHelper.isInPeriod(
+        date: row.transactionDate,
+        mode: periodMode,
+        anchor: prevAnchor,
+        billDay: billDay,
+      )) {
         previous += row.amount;
       }
     }
 
     String message;
     IconData icon = Icons.insights_outlined;
+    final periodWord =
+        periodMode == SpendPeriodMode.billingCycle ? 'billing cycle' : 'month';
     if (previous <= 0) {
       message =
-          'Track a full month to unlock spending insights versus last period.';
+          'Track a full $periodWord to unlock spending insights versus last period.';
     } else {
       final delta = ((current - previous) / previous) * 100;
       if (delta <= 0) {
         icon = Icons.trending_down;
         message =
-            'You spent ${delta.abs().toStringAsFixed(0)}% less this month compared to ${DateFormat('MMMM').format(prev)}. Keep it up!';
+            'You spent ${delta.abs().toStringAsFixed(0)}% less this $periodWord compared to the previous period. Keep it up!';
       } else {
         icon = Icons.trending_up;
         message =
-            'Spending is up ${delta.toStringAsFixed(0)}% versus ${DateFormat('MMMM').format(prev)}. Review top categories below.';
+            'Spending is up ${delta.toStringAsFixed(0)}% versus the previous $periodWord. Review top categories below.';
       }
     }
 
