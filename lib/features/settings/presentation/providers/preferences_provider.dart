@@ -8,12 +8,14 @@ class NotificationPrefs {
     required this.billReminderEnabled,
     required this.thresholdAlertsEnabled,
     required this.summaryPushEnabled,
+    required this.expenseAddedNotificationsEnabled,
     required this.billLeadDays,
   });
 
   final bool billReminderEnabled;
   final bool thresholdAlertsEnabled;
   final bool summaryPushEnabled;
+  final bool expenseAddedNotificationsEnabled;
   final int billLeadDays;
 }
 
@@ -23,6 +25,8 @@ final notificationPrefsProvider = FutureProvider<NotificationPrefs>((ref) async 
     billReminderEnabled: await prefs.billReminderEnabled(),
     thresholdAlertsEnabled: await prefs.thresholdAlertsEnabled(),
     summaryPushEnabled: await prefs.summaryPushEnabled(),
+    expenseAddedNotificationsEnabled:
+        await prefs.expenseAddedNotificationsEnabled(),
     billLeadDays: await prefs.billLeadDays(),
   );
 });

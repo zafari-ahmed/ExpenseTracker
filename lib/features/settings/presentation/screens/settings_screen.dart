@@ -217,6 +217,18 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                   _SettingsToggleRow(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Expense alerts',
+                    subtitle: 'Notify when SMS expense is saved',
+                    value: prefs.expenseAddedNotificationsEnabled,
+                    onChanged: (value) async {
+                      await ref
+                          .read(appPreferencesServiceProvider)
+                          .setExpenseAddedNotificationsEnabled(value);
+                      ref.invalidate(notificationPrefsProvider);
+                    },
+                  ),
+                  _SettingsToggleRow(
                     icon: Icons.mail_outline,
                     title: 'Bill Reminders',
                     subtitle: '${prefs.billLeadDays} days before bill date',
@@ -225,18 +237,6 @@ class SettingsScreen extends ConsumerWidget {
                       await ref
                           .read(appPreferencesServiceProvider)
                           .setBillReminderEnabled(value);
-                      ref.invalidate(notificationPrefsProvider);
-                    },
-                  ),
-                  _SettingsToggleRow(
-                    icon: Icons.summarize_outlined,
-                    title: 'Category Summaries',
-                    subtitle: 'Push category spending updates',
-                    value: prefs.summaryPushEnabled,
-                    onChanged: (value) async {
-                      await ref
-                          .read(appPreferencesServiceProvider)
-                          .setSummaryPushEnabled(value);
                       ref.invalidate(notificationPrefsProvider);
                     },
                   ),

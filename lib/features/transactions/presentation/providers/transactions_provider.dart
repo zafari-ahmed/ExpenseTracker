@@ -93,11 +93,8 @@ class TransactionMutations {
       ..createdAt = DateTime.now()
       ..source = TransactionSource.manual;
     await repo.upsertTransaction(row);
-    final thresholdService = await _ref.read(thresholdAlertServiceProvider.future);
-    await thresholdService.checkForCategoryThreshold(
-      categoryName: row.category,
-      forMonth: row.transactionDate,
-    );
+    final dispatcher = await _ref.read(notificationDispatcherProvider.future);
+    await dispatcher.onManualExpenseAdded(transaction: row);
     _refresh();
   }
 

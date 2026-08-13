@@ -10,6 +10,7 @@ import '../../features/categories/data/repositories/categories_repository.dart';
 import '../../features/transactions/data/models/transaction_model.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
 import 'app_preferences_service.dart';
+import 'sms_process_result.dart';
 
 class SmsPipelineService {
   SmsPipelineService({
@@ -39,43 +40,40 @@ class SmsPipelineService {
     return SmsParser.effectiveDefaultIgnorePhrases(disabledPhrases: disabled);
   }
 
-  /// Process one incoming / inbox SMS. Returns true if a transaction or review
-  /// item was created.
-  Future<bool> processIncomingSms({
+  /// Process one incoming / inbox SMS.
+  Future<SmsProcessResult> processIncomingSms({
     required String senderId,
     required String body,
     DateTime? receivedAt,
   }) async {
-    if (!supportsSmsReading) return false;
+    if (!supportsSmsReading) return const SmsProcessResult.none();
     final trimmedBody = body.trim();
-    if (trimmedBody.isEmpty) return false;
+    if (trimmedBody.isEmpty) return const SmsProcessResult.none();
 
     final customIgnore = await _customIgnoreList();
     final activeDefaults = await _activeDefaultIgnoreList();
 
-    // Drop OTP / credit / user-ignored alerts before any card matching.
     if (SmsParser.shouldIgnoreSms(
       trimmedBody,
       extraIgnorePhrases: customIgnore,
       enabledDefaultIgnorePhrases: activeDefaults,
     )) {
-      return false;
+      return const SmsProcessResult.none();
     }
 
-    // Skip exact duplicates already stored as transactions.
     if (await _transactionsRepository.existsByRawSmsBody(trimmedBody)) {
-      return false;
+      return const SmsProcessResult.none();
     }
 
     final cards = await _cardsRepository.getCards(activeOnly: true);
-    if (cards.isEmpty) return false;
+    if (cards.isEmpty) return const SmsProcessResult.none();
 
     CardModel? card = _matchCard(cards, senderId: senderId, body: trimmedBody);
     card ??= await _matchCardByRule(cards, trimmedBody, receivedAt);
-    if (card == null) return false;
+    if (card == null) return const SmsProcessResult.none();
 
     final rule = await _ruleForCard(card, sampleBody: trimmedBody);
-    await processSms(
+    return processSms(
       card: card,
       rule: rule,
       senderId: senderId,
@@ -84,10 +82,9 @@ class SmsPipelineService {
       customIgnorePhrases: customIgnore,
       activeDefaultIgnorePhrases: activeDefaults,
     );
-    return true;
   }
 
-  Future<void> processSms({
+  Future<SmsProcessResult> processSms({
     required CardModel card,
     required SmsParsingRuleModel rule,
     required String senderId,
@@ -105,7 +102,7 @@ class SmsPipelineService {
       extraIgnorePhrases: customIgnore,
       enabledDefaultIgnorePhrases: activeDefaults,
     )) {
-      return;
+      return const SmsProcessResult.none();
     }
 
     final lowerBody = body.toLowerCase();
@@ -117,7 +114,7 @@ class SmsPipelineService {
     if (excludes.any(
       (e) => e.trim().isNotEmpty && lowerBody.contains(e.toLowerCase()),
     )) {
-      return;
+      return const SmsProcessResult.none();
     }
 
     final parsed = SmsParser.parse(
@@ -136,17 +133,16 @@ class SmsPipelineService {
         parseError: 'Could not extract amount/place/date',
         receivedAt: receivedAt,
       );
-      return;
+      return const SmsProcessResult.needsReview();
     }
 
-    // Extra dedupe: same card + amount + place + day.
     if (await _transactionsRepository.existsSimilarSmsTransaction(
       cardId: card.id,
       amount: parsed.amount,
       place: parsed.place,
       transactionDate: parsed.transactionDate,
     )) {
-      return;
+      return const SmsProcessResult.none();
     }
 
     final category =
@@ -164,6 +160,11 @@ class SmsPipelineService {
       ..createdAt = DateTime.now()
       ..source = TransactionSource.sms;
     await _transactionsRepository.upsertTransaction(tx);
+
+    return SmsProcessResult.expenseAdded(
+      transaction: tx,
+      cardName: card.cardName,
+    );
   }
 
   CardModel? _matchCard(
@@ -183,7 +184,6 @@ class SmsPipelineService {
     }).toList();
 
     if (senderMatches.isEmpty) {
-      // Fallback: last-4 digits mentioned in SMS body.
       final byDigits = cards.where((card) {
         final digits = card.lastFourDigits?.trim();
         if (digits == null || digits.length < 4) return false;
@@ -195,7 +195,6 @@ class SmsPipelineService {
 
     if (senderMatches.length == 1) return senderMatches.first;
 
-    // Same bank sender for multiple cards → disambiguate by last 4.
     for (final card in senderMatches) {
       final digits = card.lastFourDigits?.trim();
       if (digits != null &&
@@ -207,8 +206,6 @@ class SmsPipelineService {
     return senderMatches.first;
   }
 
-  /// Fallback when sender ID / last-4 matching fails:
-  /// try each card's saved regex rule and use the only rule that parses.
   Future<CardModel?> _matchCardByRule(
     List<CardModel> cards,
     String body,
@@ -234,7 +231,6 @@ class SmsPipelineService {
       matchCount++;
       matched = card;
       if (matchCount > 1) {
-        // Ambiguous match: don't guess the wrong card.
         return null;
       }
     }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/app_router.dart';
+import 'core/services/service_providers.dart';
 import 'core/services/sms_listener_service.dart';
 import 'core/theme/app_theme.dart';
 
@@ -35,6 +36,8 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     if (!Platform.isAndroid) return;
     try {
       await ref.read(smsBootstrapProvider.future);
+      final dispatcher = await ref.read(notificationDispatcherProvider.future);
+      await dispatcher.runBillReminderChecks();
     } catch (e) {
       debugPrint('SMS bootstrap failed: $e');
     }
@@ -44,6 +47,9 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       ref.read(smsListenerServiceProvider).syncInbox();
+      ref.read(notificationDispatcherProvider.future).then(
+            (dispatcher) => dispatcher.runBillReminderChecks(),
+          );
     }
   }
 

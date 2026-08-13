@@ -11,6 +11,59 @@ class AppPreferencesService {
   static const _profileName = 'profile_name';
   static const _lastSmsScanMillis = 'last_sms_scan_millis';
   static const _spendPeriodMode = 'spend_period_mode';
+  static const _expenseAddedNotificationsEnabled =
+      'expense_added_notifications_enabled';
+  static const _thresholdAlertSentPrefix = 'threshold_alert_sent_';
+  static const _billReminderSentPrefix = 'bill_reminder_sent_';
+
+  Future<bool> expenseAddedNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_expenseAddedNotificationsEnabled) ?? true;
+  }
+
+  Future<void> setExpenseAddedNotificationsEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_expenseAddedNotificationsEnabled, value);
+  }
+
+  Future<bool> thresholdAlertSent({
+    required String categoryId,
+    required int bucket,
+    required String periodKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_thresholdAlertSentPrefix${categoryId}_${bucket}_$periodKey') ??
+        false;
+  }
+
+  Future<void> markThresholdAlertSent({
+    required String categoryId,
+    required int bucket,
+    required String periodKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(
+      '$_thresholdAlertSentPrefix${categoryId}_${bucket}_$periodKey',
+      true,
+    );
+  }
+
+  Future<bool> billReminderSent({
+    required String cardId,
+    required String periodKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_billReminderSentPrefix${cardId}_$periodKey') ??
+        false;
+  }
+
+  Future<void> markBillReminderSent({
+    required String cardId,
+    required String periodKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_billReminderSentPrefix${cardId}_$periodKey', true);
+  }
 
   Future<bool> billReminderEnabled() async {
     final prefs = await SharedPreferences.getInstance();
