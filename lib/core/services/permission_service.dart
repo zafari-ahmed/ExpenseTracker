@@ -22,6 +22,12 @@ class PermissionService {
     return Permission.sms.isGranted;
   }
 
+  Future<bool> requestCamera() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.camera.request();
+    return status.isGranted;
+  }
+
   Future<PermissionRequestResult> requestAppPermissions() async {
     final List<Permission> permissions = <Permission>[
       Permission.notification,

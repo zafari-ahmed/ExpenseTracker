@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/services/data_refresh.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -351,6 +356,31 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.section),
+            const EtLabelCaps('Backup & data'),
+            const SizedBox(height: 8),
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.file_upload_outlined,
+                  title: 'Export backup',
+                  subtitle: 'Save cards and transactions to a file',
+                  onTap: () => _exportBackup(context, ref),
+                ),
+                _SettingsRow(
+                  icon: Icons.file_download_outlined,
+                  title: 'Import backup',
+                  subtitle: 'Replace data on this install from a file',
+                  onTap: () => _importBackup(context, ref),
+                ),
+                _SettingsRow(
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Delete local data',
+                  subtitle: 'Remove transactions stored on this phone',
+                  onTap: () => _deleteLocalData(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.section),
             const EtLabelCaps('Category Thresholds'),
             const SizedBox(height: 8),
             categoriesAsync.when(
@@ -402,6 +432,105 @@ class SettingsScreen extends ConsumerWidget {
         ThemeMode.light => 'Light',
         ThemeMode.dark => 'Dark',
       };
+}
+
+Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final backup = await ref.read(backupServiceProvider.future);
+    final file = await backup.exportToTempFile();
+    if (!context.mounted) return;
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      subject: 'Expense Tracker backup',
+      text: 'Keep this file. Updating the app in place does not need it; uninstalling or changing package name does.',
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Export failed: $e')),
+    );
+  }
+}
+
+Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Replace all local data?'),
+      content: const Text(
+        'Importing a backup overwrites cards, transactions, and settings on this install. Export first if you are unsure. Do not import just to update the APK — install over the existing app instead.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Choose file'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final picked = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: const ['json'],
+  );
+  if (!context.mounted) return;
+  final path = picked?.files.single.path;
+  if (path == null) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final backup = await ref.read(backupServiceProvider.future);
+    final result = await backup.importFromFile(File(path));
+    invalidateLocalDataProviders(ref);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Imported ${result.transactionCount} transaction(s) and ${result.cardCount} card(s)',
+        ),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Import failed: $e')),
+    );
+  }
+}
+
+Future<void> _deleteLocalData(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete all local data?'),
+      content: const Text(
+        'This permanently deletes transactions, cards, and settings on this phone. Export a backup first. This cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final backup = await ref.read(backupServiceProvider.future);
+  await backup.deleteAllLocalData();
+  invalidateLocalDataProviders(ref);
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Local data deleted')),
+  );
 }
 
 Future<void> _changeProfilePhoto(BuildContext context, WidgetRef ref) async {
@@ -459,6 +588,18 @@ Future<void> _changeProfilePhoto(BuildContext context, WidgetRef ref) async {
   );
 
   if (source == null) return;
+  if (source == ImageSource.camera) {
+    final allowed =
+        await ref.read(permissionServiceProvider).requestCamera();
+    if (!allowed) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera permission is required to take a photo')),
+        );
+      }
+      return;
+    }
+  }
   await ref.read(profileMutationsProvider).pickAndSave(source: source);
 }
 

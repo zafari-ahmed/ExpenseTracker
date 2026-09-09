@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/cards/data/repositories/cards_repository.dart';
 import '../../features/categories/data/repositories/categories_repository.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
+import '../database/isar_instance.dart';
 import 'app_preferences_service.dart';
+import 'backup_service.dart';
 import 'bill_reminder_service.dart';
 import 'notification_dispatcher.dart';
 import 'notification_service.dart';
@@ -26,6 +28,11 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 
 final appPreferencesServiceProvider = Provider<AppPreferencesService>((ref) {
   return AppPreferencesService();
+});
+
+final backupServiceProvider = FutureProvider<BackupService>((ref) async {
+  final isar = await ref.watch(isarProvider.future);
+  return BackupService(isar);
 });
 
 final billReminderServiceProvider = FutureProvider<BillReminderService>((ref) async {

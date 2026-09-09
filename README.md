@@ -94,7 +94,11 @@ See `pubspec.yaml` for the full list and versions.
 
 ## Notes
 
+- **Android application id:** `com.theexpensetracker.app`. Changing this later installs a *new* app and leaves the old local database behind — export a backup first.
 - **Android SMS:** Grant SMS permission, set correct bank Sender IDs on cards, then use **Sync SMS now** in Settings if needed.
+- **Backup:** Settings → Export backup before uninstalling, changing signing keys, or changing the package name. Installing an update *over* the same app does not wipe data.
+- **Privacy policy URL:** set `AppInfo.privacyPolicyUrl` in `lib/core/constants/app_info.dart`.
+- **Release signing:** copy `android/key.properties.example` to `android/key.properties` only when you are ready for a Play Store upload key. Until then, release builds keep the debug key so they can update the current phone install.
 - **`pubspec.lock`** is committed so everyone resolves the same dependency versions (standard for Flutter apps).
 - Design export cache under `.stitch/` is gitignored.
 

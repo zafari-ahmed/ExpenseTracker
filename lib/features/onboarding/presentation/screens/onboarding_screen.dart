@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_info.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
@@ -26,20 +27,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     (
       AppAssets.splashShield,
       Icons.shield_outlined,
-      'Your Privacy First',
-      'All your financial data is encrypted and stored locally. We never sell your personal information.',
+      'Your data stays on this phone',
+      'Cards, SMS parses, and spending history are stored in the app’s private storage. They are not uploaded to our servers, and we do not sell your information.',
     ),
     (
       null,
       Icons.sms_outlined,
-      'Smart Automation',
-      'Bank SMS is parsed automatically so expenses appear without manual entry.',
+      'Bank SMS becomes expenses',
+      'When you allow SMS, matching bank and card messages are turned into transactions automatically. You can still add expenses by hand.',
     ),
     (
       null,
-      Icons.notifications_active_outlined,
-      'Secure Access',
-      'Grant SMS and notification access so bills and thresholds stay on track.',
+      Icons.privacy_tip_outlined,
+      'SMS access disclosure',
+      'The next step asks Android for SMS and notification permission. Read this carefully before you continue.',
     ),
   ];
 
@@ -76,17 +77,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         setState(() {
           _loading = false;
           _status = result.permanentlyDenied
-              ? 'Permissions were denied permanently. Open Settings to enable SMS and Notifications.'
-              : 'Please allow SMS and Notifications so expenses can be tracked automatically.';
+              ? 'Permissions were denied permanently. Open Settings to enable SMS and Notifications, or skip and enter expenses manually.'
+              : 'SMS and Notifications were not granted. You can skip and track expenses manually.';
         });
 
         if (result.permanentlyDenied) {
           await showDialog<void>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Permissions required'),
+              title: const Text('Permissions not granted'),
               content: const Text(
-                'SMS and notification access were permanently denied. Enable them in system settings to continue auto-tracking.',
+                'Enable SMS in system settings for automatic tracking, or continue without it and add expenses yourself.',
               ),
               actions: [
                 TextButton(
@@ -107,8 +108,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return;
       }
 
-      // Start SMS listener only after permission_handler granted access.
-      // Avoids another_telephony.requestSmsPermissions crash.
       try {
         await ref.read(smsListenerServiceProvider).start();
       } catch (e) {
@@ -138,7 +137,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             children: [
               const SizedBox(height: 24),
               Text(
-                'Expense Tracker',
+                AppInfo.name,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w800,
@@ -181,7 +180,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ),
                         const SizedBox(height: 12),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 300),
+                          constraints: const BoxConstraints(maxWidth: 320),
                           child: Text(
                             step.$4,
                             textAlign: TextAlign.center,
@@ -191,6 +190,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 ?.copyWith(color: AppColors.onSurfaceVariant),
                           ),
                         ),
+                        if (index == 2) ...[
+                          const SizedBox(height: 16),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 320),
+                            child: Text(
+                              'SMS is read only to detect card and bank expenses. Matching messages are saved locally as transactions. You can revoke SMS later in Android Settings.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   },
@@ -234,7 +250,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ? 'Requesting...'
                         : isLast
                             ? (Platform.isAndroid
-                                ? 'Grant & Continue'
+                                ? 'I understand, continue'
                                 : 'Continue')
                             : 'Continue',
                   ),

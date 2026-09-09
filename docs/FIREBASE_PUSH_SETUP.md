@@ -31,7 +31,7 @@ Edit notification text in:
 
 1. In the project overview, click **Android** icon
 2. **Android package name**: must match your app id  
-   Current value: `com.example.expense_tracker`  
+   Current value: `com.theexpensetracker.app`  
    (see `android/app/build.gradle.kts` → `applicationId`)
 3. **App nickname**: optional (e.g. Expense Tracker)
 4. **Debug signing SHA-1** (optional for now; required for some Google Sign-In flows):
@@ -138,7 +138,7 @@ FirebaseMessaging.onMessage.listen((RemoteMessage message) {
 
 ### 10. Production checklist
 
-- [ ] Change `applicationId` from `com.example.expense_tracker` to your own (e.g. `com.yourcompany.expense_tracker`)
+- [ ] Android `applicationId` is `com.theexpensetracker.app`
 - [ ] Add **release** signing SHA-1 / SHA-256 in Firebase project settings
 - [ ] Use a backend to send targeted messages (never ship server keys in the app)
 - [ ] Keep `google-services.json` out of public repos if the project is private production
