@@ -12,32 +12,8 @@ class StartupScreen extends ConsumerStatefulWidget {
   ConsumerState<StartupScreen> createState() => _StartupScreenState();
 }
 
-class _StartupScreenState extends ConsumerState<StartupScreen>
-    with SingleTickerProviderStateMixin {
+class _StartupScreenState extends ConsumerState<StartupScreen> {
   bool _navigated = false;
-  late final AnimationController _controller;
-  late final Animation<double> _fade;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   Future<void> _goOnce(bool done) async {
     if (_navigated || !mounted) return;
@@ -49,52 +25,19 @@ class _StartupScreenState extends ConsumerState<StartupScreen>
 
   @override
   Widget build(BuildContext context) {
-    final doneAsync = ref.watch(onboardingCompletedProvider);
-    doneAsync.whenData(_goOnce);
+    ref.watch(onboardingCompletedProvider).whenData(_goOnce);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: FadeTransition(
-        opacity: _fade,
-        child: ScaleTransition(
-          scale: _scale,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 148,
-                  height: 148,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surfaceContainerLow,
-                    boxShadow: AppShadows.level1,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    AppAssets.splashShield,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Text(
-                  'Expense Tracker',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 28,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Calm control over every spend',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                ),
-              ],
-            ),
-          ),
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.background,
+      body: Center(
+        child: Image.asset(
+          isDark ? AppAssets.splashBrandedDark : AppAssets.splashBranded,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+          filterQuality: FilterQuality.high,
         ),
       ),
     );

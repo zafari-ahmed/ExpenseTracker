@@ -155,4 +155,6 @@ abstract final class AppCategoryStyle {
 abstract final class AppAssets {
   static const avatar = 'assets/images/avatar.jpg';
   static const splashShield = 'assets/images/splash_shield.jpg';
+  static const splashBranded = 'assets/images/splash_branded.png';
+  static const splashBrandedDark = 'assets/images/splash_branded_dark.png';
 }

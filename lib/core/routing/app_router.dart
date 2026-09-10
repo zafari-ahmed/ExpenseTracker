@@ -16,9 +16,11 @@ import '../../features/transactions/presentation/screens/transactions_screen.dar
 import '../../features/transactions/presentation/screens/transaction_entry_screen.dart';
 import 'app_shell.dart';
 
+final initialLocationProvider = Provider<String>((ref) => '/');
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: ref.watch(initialLocationProvider),
     routes: [
       GoRoute(
         path: '/',

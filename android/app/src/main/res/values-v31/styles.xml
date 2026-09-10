@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Shown while the process is starting. Full splash_branded.png. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_android12</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_android12</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
-    <!-- Used behind Flutter after the first frame. Must stay the original
-         Flutter theme — splash colors/images here shift status-bar insets
-         and change the header SafeArea layout. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
