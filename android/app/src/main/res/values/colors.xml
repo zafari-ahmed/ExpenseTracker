@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_background">#FFF7F8FA</color>
-    <color name="splash_android12">#FFFFFFFF</color>
     <color name="splash_title">#FF2429A7</color>
     <color name="splash_tagline">#FF767685</color>
 </resources>

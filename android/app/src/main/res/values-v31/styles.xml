@@ -2,9 +2,11 @@
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
-        <item name="android:windowSplashScreenBackground">@color/splash_android12</item>
+        <!-- Android 12 always draws a system splash; keep it empty so it is
+             not a second branded screen. Flutter startup_screen is the splash. -->
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_android12</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
