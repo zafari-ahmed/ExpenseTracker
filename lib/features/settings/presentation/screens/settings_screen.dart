@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/data_refresh.dart';
+import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -327,7 +328,7 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                   loading: () => const LinearProgressIndicator(),
-                  error: (e, _) => _SettingsRow(
+                  error: (e, _) => const _SettingsRow(
                     icon: Icons.date_range_outlined,
                     title: 'Spend period',
                     subtitle: 'Error loading preference',
@@ -347,11 +348,25 @@ class SettingsScreen extends ConsumerWidget {
                     ref.read(themeModeProvider.notifier).state = next;
                   },
                 ),
-                _SettingsRow(
+                const _SettingsRow(
                   icon: Icons.language_outlined,
                   title: 'Currency & Region',
                   subtitle: 'PKR (Rs.)',
                   onTap: null,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.section),
+            const EtLabelCaps('SMS money management'),
+            const SizedBox(height: 8),
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.sms_outlined,
+                  title: 'Try a sample debit SMS',
+                  subtitle:
+                      'Parse a sample bank debit message into an expense (for review if this phone has no bank SMS)',
+                  onTap: () => _trySampleSms(context, ref),
                 ),
               ],
             ),
@@ -432,6 +447,28 @@ class SettingsScreen extends ConsumerWidget {
         ThemeMode.light => 'Light',
         ThemeMode.dark => 'Dark',
       };
+}
+
+Future<void> _trySampleSms(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final created = await ReviewerDemoService(ref).importSampleDebitSms();
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          created
+              ? 'Sample bank debit SMS parsed: FOODPANDA Rs. 1,250'
+              : 'That sample SMS is already in your transactions.',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not parse sample SMS: $e')),
+    );
+  }
 }
 
 Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {

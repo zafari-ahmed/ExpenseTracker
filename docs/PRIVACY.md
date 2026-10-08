@@ -1,8 +1,8 @@
 # Privacy Policy — Expense Tracker
 
-Last updated: 8 September 2026
+Last updated: 7 October 2026
 
-Expense Tracker is a personal finance app that can read bank and card SMS on your Android device to create expense records. This policy describes what the app accesses and how that data is handled.
+Expense Tracker is a personal finance app for **SMS-based money management**. It can read bank and card debit SMS on your Android device to create expense records. This policy describes what the app accesses and how that data is handled.
 
 ## Who we are
 
@@ -18,19 +18,19 @@ The app stores the following on your phone, in the app’s private storage:
 - Transactions created from SMS or entered manually (amount, merchant/place, category, date, original SMS body)
 - Categories, keywords, and spending limits
 - Notification and display preferences
-- Optional app lock PIN (stored as a one-way hash, not the PIN itself)
 - SMS ignore-list phrases
 
 This storage is protected by Android’s app sandbox. The current version does **not** add a separate encryption password on top of that sandbox.
 
 ## SMS access
 
-If you grant SMS permission, the app reads incoming and recent inbox messages to detect card/bank expenses. It uses sender IDs and parsing rules you configure.
+If you grant SMS permission, the app uses **READ_SMS** and **RECEIVE_SMS** to read inbox and incoming messages and detect **bank and card debit / expense** SMS. Matching messages are saved locally as transactions.
 
-- SMS is processed on the device.
-- Matching messages may be stored locally as transactions (including the original message body, so you can review or fix a parse).
-- The app does not send SMS, and it does not upload SMS or transaction data to our servers.
-- You can skip SMS permission and enter expenses manually.
+- SMS is processed on the device only.
+- The app does **not** send SMS.
+- The app does **not** use SMS for OTP, 5-digit verification codes, account login, or fraud detection. Those messages are ignored.
+- The app does not upload SMS or transaction data to our servers.
+- You can skip SMS permission and enter expenses manually. The rest of the app still works.
 - You can revoke SMS access at any time in Android Settings. New automatic imports will stop; existing local records remain until you delete them.
 
 ## Notifications
@@ -45,7 +45,7 @@ A profile photo is optional. Choosing an image uses the system photo picker. Tak
 
 We do not sell, rent, or share your SMS, transactions, or profile data with advertisers or third-party analytics services. The app has no cloud sync.
 
-Android itself may include the app in device backups unless you turn backups off at the system level. A future Play Store build may disable auto-backup of app data.
+Android itself may include the app in device backups unless you turn backups off at the system level. This Play Store build disables auto-backup of app data (`allowBackup=false`).
 
 ## Your controls
 

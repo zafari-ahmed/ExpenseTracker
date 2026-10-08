@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
@@ -299,10 +300,9 @@ class DashboardScreen extends ConsumerWidget {
                           fallbackBillDay: billDay,
                         );
                         if (monthRows.isEmpty) {
-                          return Text(
-                            periodMode == SpendPeriodMode.billingCycle
-                                ? 'No transactions this billing cycle yet.'
-                                : 'No transactions this month yet.',
+                          return _SmsEmptyState(
+                            billingCycle:
+                                periodMode == SpendPeriodMode.billingCycle,
                           );
                         }
                         final recent = monthRows.take(5).toList();
@@ -617,6 +617,77 @@ class _CategorySummaryRow extends StatelessWidget {
       },
       error: (_, __) => const SizedBox.shrink(),
       loading: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _SmsEmptyState extends ConsumerStatefulWidget {
+  const _SmsEmptyState({required this.billingCycle});
+
+  final bool billingCycle;
+
+  @override
+  ConsumerState<_SmsEmptyState> createState() => _SmsEmptyStateState();
+}
+
+class _SmsEmptyStateState extends ConsumerState<_SmsEmptyState> {
+  bool _busy = false;
+
+  Future<void> _runSample() async {
+    setState(() => _busy = true);
+    try {
+      final created = await ReviewerDemoService(ref).importSampleDebitSms();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            created
+                ? 'Sample bank debit SMS parsed: FOODPANDA Rs. 1,250'
+                : 'That sample SMS is already in your transactions.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not parse sample SMS: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.billingCycle
+              ? 'No bank SMS expenses in this billing cycle.'
+              : 'No bank SMS found for this month.',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'This app reads debit SMS from your bank or card and turns matching messages into expenses. If this phone has no bank alerts, try a sample debit SMS to see the same pipeline.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _runSample,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sms_outlined, size: 18),
+          label: Text(_busy ? 'Parsing sample SMS...' : 'Try a sample debit SMS'),
+        ),
+      ],
     );
   }
 }

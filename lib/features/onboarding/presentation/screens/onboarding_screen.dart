@@ -34,13 +34,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       null,
       Icons.sms_outlined,
       'Bank SMS becomes expenses',
-      'When you allow SMS, matching bank and card messages are turned into transactions automatically. You can still add expenses by hand.',
+      'This app’s core feature is SMS-based money management: it reads debit SMS from your bank or card and turns matching messages into expenses. You can still add expenses by hand.',
     ),
     (
       null,
       Icons.privacy_tip_outlined,
       'SMS access disclosure',
-      'The next step asks Android for SMS and notification permission. Read this carefully before you continue.',
+      'The next step asks Android for SMS permission so the app can read and receive bank and wallet debit messages.',
     ),
   ];
 
@@ -50,12 +50,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _continue() async {
+  Future<void> _continue({required bool requestSms}) async {
     if (_page < _steps.length - 1) {
       await _pageController.nextPage(
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
       );
+      return;
+    }
+
+    if (!requestSms) {
+      await _finishToDashboard();
       return;
     }
 
@@ -65,61 +70,54 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
 
     final permissionService = ref.read(permissionServiceProvider);
-    final onboardingService = ref.read(onboardingServiceProvider);
-
     final PermissionRequestResult result =
         await permissionService.requestAppPermissions();
 
     if (!mounted) return;
 
-    if (Platform.isAndroid) {
-      if (!result.smsGranted || !result.notificationsGranted) {
-        setState(() {
-          _loading = false;
-          _status = result.permanentlyDenied
-              ? 'Permissions were denied permanently. Open Settings to enable SMS and Notifications, or skip and enter expenses manually.'
-              : 'SMS and Notifications were not granted. You can skip and track expenses manually.';
-        });
-
-        if (result.permanentlyDenied) {
-          await showDialog<void>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Permissions not granted'),
-              content: const Text(
-                'Enable SMS in system settings for automatic tracking, or continue without it and add expenses yourself.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Later'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await permissionService.openSettings();
-                  },
-                  child: const Text('Open Settings'),
-                ),
-              ],
-            ),
-          );
-        }
-        return;
-      }
-
+    if (Platform.isAndroid && result.smsGranted) {
       try {
         await ref.read(smsListenerServiceProvider).start();
       } catch (e) {
         debugPrint('SMS listener start after onboarding failed: $e');
       }
+    } else if (Platform.isAndroid && !result.smsGranted) {
+      setState(() {
+        _loading = false;
+        _status = result.permanentlyDenied
+            ? 'SMS was not granted. You can track expenses manually, or enable SMS later in Android Settings.'
+            : 'SMS was not granted. You can still use the app and add expenses yourself.';
+      });
+      if (result.permanentlyDenied) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Continue without SMS'),
+            content: const Text(
+              'Enable SMS in system settings for automatic bank-expense tracking, or continue and add expenses yourself.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Continue'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await permissionService.openSettings();
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+      }
     }
 
-    await onboardingService.markComplete();
-    if (mounted) context.go('/dashboard');
+    await _finishToDashboard();
   }
 
-  Future<void> _skip() async {
+  Future<void> _finishToDashboard() async {
     await ref.read(onboardingServiceProvider).markComplete();
     if (mounted) context.go('/dashboard');
   }
@@ -150,64 +148,67 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   onPageChanged: (i) => setState(() => _page = i),
                   itemBuilder: (context, index) {
                     final step = _steps[index];
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 220,
-                          height: 220,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.surfaceContainerLow,
+                    return SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 24),
+                          Container(
+                            width: 180,
+                            height: 180,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.surfaceContainerLow,
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: step.$1 != null
+                                ? Image.asset(step.$1!, fit: BoxFit.cover)
+                                : Icon(
+                                    step.$2,
+                                    size: 88,
+                                    color: AppColors.primary,
+                                  ),
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: step.$1 != null
-                              ? Image.asset(step.$1!, fit: BoxFit.cover)
-                              : Icon(
-                                  step.$2,
-                                  size: 88,
-                                  color: AppColors.primary,
-                                ),
-                        ),
-                        const SizedBox(height: AppSpacing.section),
-                        Text(
-                          step.$3,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 12),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 320),
-                          child: Text(
-                            step.$4,
+                          const SizedBox(height: AppSpacing.section),
+                          Text(
+                            step.$3,
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme
-                                .bodyLarge
-                                ?.copyWith(color: AppColors.onSurfaceVariant),
+                                .headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
-                        ),
-                        if (index == 2) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 320),
                             child: Text(
-                              'SMS is read only to detect card and bank expenses. Matching messages are saved locally as transactions. You can revoke SMS later in Android Settings.',
+                              step.$4,
                               textAlign: TextAlign.center,
                               style: Theme.of(context)
                                   .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppColors.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  .bodyLarge
+                                  ?.copyWith(color: AppColors.onSurfaceVariant),
                             ),
                           ),
+                          if (index == 2) ...[
+                            const SizedBox(height: 16),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 340),
+                              child: Text(
+                                'We request READ_SMS and RECEIVE_SMS only to detect bank and card debit messages and save them as expenses on this device.\n\n'
+                                'We do not send SMS. We do not read OTP or 5-digit verification codes. Matching messages stay on this phone and are not uploaded.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     );
                   },
                 ),
@@ -241,28 +242,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.section),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _loading ? null : _continue,
-                  child: Text(
-                    _loading
-                        ? 'Requesting...'
-                        : isLast
-                            ? (Platform.isAndroid
-                                ? 'I understand, continue'
-                                : 'Continue')
-                            : 'Continue',
+              if (Platform.isAndroid && isLast) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _loading
+                        ? null
+                        : () => _continue(requestSms: true),
+                    child: Text(
+                      _loading ? 'Requesting...' : 'Allow SMS tracking',
+                    ),
                   ),
                 ),
-              ),
-              if (Platform.isAndroid && isLast)
                 TextButton(
-                  onPressed: _loading ? null : _skip,
-                  child: const Text('Skip for now'),
-                )
-              else
-                const SizedBox(height: 48),
+                  onPressed: _loading
+                      ? null
+                      : () => _continue(requestSms: false),
+                  child: const Text('Not now — add expenses manually'),
+                ),
+              ] else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _loading
+                        ? null
+                        : () => _continue(requestSms: true),
+                    child: const Text('Continue'),
+                  ),
+                ),
               const SizedBox(height: 12),
             ],
           ),
