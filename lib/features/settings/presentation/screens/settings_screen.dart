@@ -8,11 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/app_currency.dart';
+import '../../../../core/constants/app_info.dart';
 import '../../../../core/services/data_refresh.dart';
 import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
@@ -34,7 +35,6 @@ class SettingsScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider);
     final cardsAsync = ref.watch(cardsListProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
-    final themeMode = ref.watch(themeModeProvider);
     final profileNameAsync = ref.watch(profileNameProvider);
     final profileName = profileNameAsync.valueOrNull ?? 'Member';
 
@@ -50,72 +50,43 @@ class SettingsScreen extends ConsumerWidget {
             108,
           ),
           children: [
-            const EtAppHeader(showCalendar: false),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 10),
+              child: Text(
+                'Setup',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
             EtSurfaceCard(
-              elevated: false,
-              child: Column(
+              onTap: () => _changeProfileName(context, ref, profileName),
+              child: Row(
                 children: [
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      const EtAvatar(size: 88),
-                      Material(
-                        color: AppColors.primary,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _changeProfilePhoto(context, ref),
-                          child: const SizedBox(
-                            width: 30,
-                            height: 30,
-                            child: Icon(
-                              Icons.camera_alt_outlined,
-                              color: Colors.white,
-                              size: 16,
-                            ),
+                  GestureDetector(
+                    onTap: () => _changeProfilePhoto(context, ref),
+                    child: const EtAvatar(size: 42),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profileName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    profileName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  Text(
-                    'SMS Expense Tracking',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    onPressed: () => _changeProfilePhoto(context, ref),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shape: const StadiumBorder(),
+                        const EtLabelCaps('LOCAL ONLY · NO ACCOUNT'),
+                      ],
                     ),
-                    child: const Text('Change Photo'),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () => _changeProfileName(context, ref, profileName),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: const Text('Change Name'),
-                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.onSurfaceVariant),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.section),
-            const EtLabelCaps('Cards'),
+            const SizedBox(height: 16),
+            const EtLabelCaps('SMS & DATA'),
             const SizedBox(height: 8),
             _SettingsGroup(
               children: [
@@ -335,24 +306,36 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: null,
                   ),
                 ),
-                _SettingsRow(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Theme',
-                  subtitle: _themeLabel(themeMode),
-                  onTap: () {
-                    final next = switch (themeMode) {
-                      ThemeMode.system => ThemeMode.light,
-                      ThemeMode.light => ThemeMode.dark,
-                      ThemeMode.dark => ThemeMode.system,
-                    };
-                    ref.read(themeModeProvider.notifier).state = next;
-                  },
-                ),
-                const _SettingsRow(
-                  icon: Icons.language_outlined,
-                  title: 'Currency & Region',
-                  subtitle: 'PKR (Rs.)',
-                  onTap: null,
+                ref.watch(currencyProvider).when(
+                  data: (currency) => _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: '${currency.name} · ${currency.code}',
+                    trailing: Text(
+                      currency.code,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => _pickCurrency(context, ref, currency),
+                  ),
+                  loading: () => const _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: 'Loading…',
+                    onTap: null,
+                  ),
+                  error: (_, __) => _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: 'Tap to choose',
+                    onTap: () => _pickCurrency(
+                      context,
+                      ref,
+                      AppCurrency.pkr,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -436,17 +419,107 @@ class SettingsScreen extends ConsumerWidget {
               error: (e, _) => Text('Error: $e'),
               loading: () => const LinearProgressIndicator(),
             ),
+            const SizedBox(height: 20),
+            Center(
+              child: EtLabelCaps(
+                '${AppInfo.brand.toUpperCase()} ${AppInfo.versionLabel} · ON-DEVICE',
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  String _themeLabel(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => 'System default',
-        ThemeMode.light => 'Light',
-        ThemeMode.dark => 'Dark',
-      };
+}
+
+Future<void> _pickCurrency(
+  BuildContext context,
+  WidgetRef ref,
+  AppCurrency current,
+) async {
+  final selected = await showModalBottomSheet<AppCurrency>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      final maxHeight = MediaQuery.sizeOf(ctx).height * 0.62;
+      return SafeArea(
+        child: SizedBox(
+          height: maxHeight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Display currency',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Changes the symbol shown in the app. Amounts are not converted.',
+                  style: TextStyle(
+                    color: AppColors.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: AppCurrency.all.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: AppColors.hairline),
+                    itemBuilder: (context, index) {
+                      final item = AppCurrency.all[index];
+                      final selected = item.code == current.code;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          item.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text('${item.code} · ${item.symbol.trim()}'),
+                        trailing: selected
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppColors.primary,
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(ctx, item),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  if (selected == null) return;
+  await ref.read(appPreferencesServiceProvider).setCurrencyCode(selected.code);
+  CurrencyStore.current = selected;
+  ref.invalidate(currencyProvider);
 }
 
 Future<void> _trySampleSms(BuildContext context, WidgetRef ref) async {
@@ -690,10 +763,7 @@ class _SettingsGroup extends StatelessWidget {
           for (var i = 0; i < children.length; i++) ...[
             children[i],
             if (i < children.length - 1)
-              Divider(
-                height: 1,
-                color: AppColors.outlineVariant.withValues(alpha: 0.4),
-              ),
+              const Divider(height: 1, color: AppColors.hairline),
           ],
         ],
       ),
@@ -724,15 +794,7 @@ class _SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 22),
-            ),
+            Icon(icon, color: AppColors.body, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -782,15 +844,7 @@ class _SettingsToggleRow extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 22),
-          ),
+          Icon(icon, color: AppColors.body, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

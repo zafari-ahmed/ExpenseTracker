@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_currency.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/utils/period_range.dart';
 
@@ -34,4 +35,11 @@ final notificationPrefsProvider = FutureProvider<NotificationPrefs>((ref) async 
 final spendPeriodModeProvider = FutureProvider<SpendPeriodMode>((ref) async {
   final prefs = ref.watch(appPreferencesServiceProvider);
   return prefs.spendPeriodMode();
+});
+
+final currencyProvider = FutureProvider<AppCurrency>((ref) async {
+  final prefs = ref.watch(appPreferencesServiceProvider);
+  final currency = AppCurrency.byCode(await prefs.currencyCode());
+  CurrencyStore.current = currency;
+  return currency;
 });

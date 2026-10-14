@@ -1,17 +1,52 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../features/settings/presentation/providers/preferences_provider.dart';
 import '../../features/settings/presentation/providers/profile_provider.dart';
+import '../constants/app_currency.dart';
+import '../constants/app_info.dart';
 import '../theme/design_tokens.dart';
 
 class EtMoney {
-  static final NumberFormat currency =
-      NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
+  static String format(num value, [AppCurrency? currency]) {
+    final selected = currency ?? CurrencyStore.current;
+    return NumberFormat.currency(
+      symbol: selected.symbol,
+      decimalDigits: 0,
+    ).format(value);
+  }
+}
 
-  static String format(num value) => currency.format(value);
+class EtBrandMark extends StatelessWidget {
+  const EtBrandMark({super.key, this.size = 26});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'E',
+        style: GoogleFonts.archivo(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: size * 0.5,
+        ),
+      ),
+    );
+  }
 }
 
 class EtAvatar extends ConsumerWidget {
@@ -25,25 +60,44 @@ class EtAvatar extends ConsumerWidget {
     final pathAsync = ref.watch(profileImagePathProvider);
     final path = pathAsync.asData?.value;
     final hasCustom = path != null && File(path).existsSync();
+    final name = ref.watch(profileNameProvider).valueOrNull ?? 'Member';
+    final initials = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
 
-    final child = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.surfaceContainerHigh,
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.12),
-          width: 2,
-        ),
-        image: DecorationImage(
-          image: hasCustom
-              ? FileImage(File(path))
-              : const AssetImage(AppAssets.avatar) as ImageProvider,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
+    final child = hasCustom
+        ? Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              image: DecorationImage(
+                image: FileImage(File(path)),
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+        : Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials.isEmpty ? 'E' : initials,
+              style: GoogleFonts.archivo(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: size * 0.36,
+              ),
+            ),
+          );
     if (onTap == null) return child;
     return GestureDetector(onTap: onTap, child: child);
   }
@@ -59,11 +113,12 @@ class EtLabelCaps extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: color ?? AppColors.onSurfaceVariant,
-            letterSpacing: 0.8,
-            fontSize: 11,
-          ),
+      style: GoogleFonts.ibmPlexMono(
+        color: color ?? AppColors.onSurfaceVariant,
+        letterSpacing: 1.4,
+        fontSize: 9,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 }
@@ -83,28 +138,13 @@ class EtSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                  ),
-            ),
-          ),
+          Expanded(child: EtLabelCaps(title)),
           if (actionLabel != null)
-            TextButton(
-              onPressed: onAction,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
+            GestureDetector(
+              onTap: onAction,
               child: EtLabelCaps(actionLabel!, color: AppColors.primary),
             ),
         ],
@@ -117,8 +157,8 @@ class EtSurfaceCard extends StatelessWidget {
   const EtSurfaceCard({
     required this.child,
     super.key,
-    this.padding = const EdgeInsets.all(AppSpacing.md),
-    this.radius = AppRadii.summary,
+    this.padding = const EdgeInsets.all(14),
+    this.radius = AppRadii.card,
     this.onTap,
     this.color,
     this.border = true,
@@ -142,11 +182,9 @@ class EtSurfaceCard extends StatelessWidget {
         color: color ??
             (isDark ? AppColors.cardDark : AppColors.surfaceContainerLowest),
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: (!elevated || isDark) ? null : AppShadows.level1,
         border: border
             ? Border.all(
-                color: (isDark ? AppColors.borderDark : AppColors.outlineVariant)
-                    .withValues(alpha: 0.28),
+                color: isDark ? AppColors.borderDark : AppColors.outlineVariant,
               )
             : null,
       ),
@@ -171,7 +209,7 @@ class EtSparkline extends StatelessWidget {
     super.key,
     this.height = 36,
     this.width = 72,
-    this.color = AppColors.primary,
+    this.color = AppColors.primaryBright,
   });
 
   final List<double> values;
@@ -181,83 +219,60 @@ class EtSparkline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return EtBarSpark(values: values, height: height, width: width, color: color);
+  }
+}
+
+class EtBarSpark extends StatelessWidget {
+  const EtBarSpark({
+    required this.values,
+    super.key,
+    this.height = 40,
+    this.width,
+    this.color = AppColors.primaryBright,
+    this.trackColor = AppColors.inkMuted,
+  });
+
+  final List<double> values;
+  final double height;
+  final double? width;
+  final Color color;
+  final Color trackColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final bars = values.isEmpty ? const [0.0] : values;
+    final maxV = bars.reduce(math.max);
     return SizedBox(
       width: width,
       height: height,
-      child: CustomPaint(
-        painter: _SparklinePainter(
-          values: values.isEmpty ? const [0, 0] : values,
-          color: color,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < bars.length; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            Expanded(
+              child: Container(
+                height: maxV <= 0
+                    ? 8
+                    : math.max(8, height * (bars[i] / maxV)),
+                decoration: BoxDecoration(
+                  color: i == bars.length - 1 ? color : trackColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _SparklinePainter extends CustomPainter {
-  _SparklinePainter({required this.values, required this.color});
-
-  final List<double> values;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) return;
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final range = (maxV - minV).abs() < 0.001 ? 1.0 : (maxV - minV);
-
-    final path = Path();
-    for (var i = 0; i < values.length; i++) {
-      final x = values.length == 1
-          ? size.width / 2
-          : size.width * (i / (values.length - 1));
-      final y = size.height - ((values[i] - minV) / range) * size.height;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    final fill = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.22),
-            color.withValues(alpha: 0.02),
-          ],
-        ).createShader(Offset.zero & size),
-    );
-
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.color != color;
-}
-
 class EtAppHeader extends StatelessWidget {
   const EtAppHeader({
     super.key,
-    this.title = 'Expense Tracker',
+    this.title = AppInfo.brand,
     this.greeting,
     this.subtitle,
     this.onCalendarTap,
@@ -265,6 +280,7 @@ class EtAppHeader extends StatelessWidget {
     this.onAvatarTap,
     this.showBrandTitle = true,
     this.showCalendar = true,
+    this.trailing,
   });
 
   final String title;
@@ -275,100 +291,117 @@ class EtAppHeader extends StatelessWidget {
   final VoidCallback? onAvatarTap;
   final bool showBrandTitle;
   final bool showCalendar;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryDark : AppColors.primary;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.margin,
-        AppSpacing.sm,
+        8,
         AppSpacing.margin,
-        AppSpacing.md,
+        12,
       ),
       child: Row(
         children: [
-          EtAvatar(onTap: onAvatarTap),
-          const SizedBox(width: 12),
+          const EtBrandMark(),
+          const SizedBox(width: 9),
           Expanded(
-            child: showBrandTitle && greeting == null
-                ? Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                        ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (greeting != null)
-                        Text(
-                          greeting!,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.onSurfaceVariant,
-                                    fontSize: 13,
-                                  ),
-                        ),
-                      if (subtitle != null)
-                        InkWell(
-                          onTap: onSubtitleTap ?? onCalendarTap,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  subtitle!,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        color: primary,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 22,
-                                      ),
-                                ),
-                              ),
-                              Icon(Icons.expand_more, color: primary, size: 22),
-                            ],
-                          ),
-                        )
-                      else if (showBrandTitle)
-                        Text(
-                          title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                    ],
-                  ),
-          ),
-          if (showCalendar)
-            Material(
-              color: isDark
-                  ? AppColors.cardDark
-                  : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: onCalendarTap,
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Icon(Icons.calendar_month_outlined, color: primary),
-                ),
+            child: Text(
+              title,
+              style: GoogleFonts.archivo(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: AppColors.ink,
               ),
             ),
+          ),
+          if (trailing != null) trailing!,
+          if (showCalendar && trailing == null)
+            EtGhostIconButton(
+              icon: Icons.calendar_month_outlined,
+              onTap: onCalendarTap,
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class EtPageHeader extends StatelessWidget {
+  const EtPageHeader({
+    required this.title,
+    super.key,
+    this.onBack,
+    this.actions,
+    this.closeInsteadOfBack = false,
+  });
+
+  final String title;
+  final VoidCallback? onBack;
+  final List<Widget>? actions;
+  final bool closeInsteadOfBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onBack ?? () => Navigator.maybePop(context),
+            icon: Icon(
+              closeInsteadOfBack ? Icons.close : Icons.arrow_back,
+              color: AppColors.ink,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.archivo(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+          ...?actions,
+        ],
+      ),
+    );
+  }
+}
+
+class EtGhostIconButton extends StatelessWidget {
+  const EtGhostIconButton({
+    required this.icon,
+    super.key,
+    this.onTap,
+    this.size = 34,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(9),
+        side: const BorderSide(color: AppColors.outlineVariant),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(9),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, size: 19, color: AppColors.body),
+        ),
       ),
     );
   }
@@ -378,8 +411,8 @@ class EtCategoryBadge extends StatelessWidget {
   const EtCategoryBadge({
     required this.category,
     super.key,
-    this.size = 44,
-    this.iconSize = 22,
+    this.size = 32,
+    this.iconSize = 18,
     this.square = true,
   });
 
@@ -390,24 +423,23 @@ class EtCategoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppCategoryStyle.colorFor(category);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(square ? 12 : size / 2),
+        color: AppCategoryStyle.tintFor(category),
+        borderRadius: BorderRadius.circular(square ? 8 : size / 2),
       ),
       child: Icon(
         AppCategoryStyle.iconFor(category),
-        color: color,
+        color: AppCategoryStyle.colorFor(category),
         size: iconSize,
       ),
     );
   }
 }
 
-class EtTransactionTile extends StatelessWidget {
+class EtTransactionTile extends ConsumerWidget {
   const EtTransactionTile({
     required this.place,
     required this.category,
@@ -418,6 +450,7 @@ class EtTransactionTile extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.showAccent = false,
+    this.compact = false,
   });
 
   final String place;
@@ -428,123 +461,87 @@ class EtTransactionTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final bool showAccent;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(currencyProvider);
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          EtCategoryBadge(category: category, size: 32, iconSize: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  place,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.archivo(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 10,
+                    letterSpacing: 0.4,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            EtMoney.format(amount),
+            style: GoogleFonts.archivo(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: AppColors.ink,
+            ),
+          ),
+          if (onDelete != null)
+            IconButton(
+              tooltip: 'Delete',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              onPressed: onDelete,
+            ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return row;
+    return InkWell(onTap: onTap, child: row);
+  }
+}
+
+class EtTxnGroup extends StatelessWidget {
+  const EtTxnGroup({required this.children, super.key});
+
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppCategoryStyle.colorFor(category);
-
     return EtSurfaceCard(
-      radius: AppRadii.card,
       padding: EdgeInsets.zero,
-      border: false,
-      onTap: onTap,
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            if (showAccent)
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppRadii.card),
-                    bottomLeft: Radius.circular(AppRadii.card),
-                  ),
-                ),
-              ),
-            Expanded(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                child: Row(
-                  children: [
-                    EtCategoryBadge(
-                      category: category,
-                      square: !showAccent,
-                      size: showAccent ? 42 : 44,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  place,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (badge != null) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceContainerHigh,
-                                    borderRadius:
-                                        BorderRadius.circular(AppRadii.pill),
-                                  ),
-                                  child: Text(
-                                    badge!,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.onSurfaceVariant,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            subtitle,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: AppColors.onSurfaceVariant,
-                                  fontSize: 13,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '-${EtMoney.format(amount)}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                    ),
-                    if (onDelete != null)
-                      IconButton(
-                        tooltip: 'Delete',
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: onDelete,
-                      ),
-                  ],
-                ),
-              ),
-            ),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.hairline),
+            children[i],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -561,10 +558,10 @@ class EtBottomNav extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
 
   static const _items = [
-    (Icons.grid_view_rounded, 'Dashboard'),
-    (Icons.receipt_long_outlined, 'Transactions'),
-    (Icons.bar_chart_rounded, 'Analytics'),
-    (Icons.settings_outlined, 'Settings'),
+    (Icons.space_dashboard_outlined, Icons.space_dashboard, 'DASH'),
+    (Icons.receipt_long_outlined, Icons.receipt_long, 'TXNS'),
+    (Icons.bar_chart_outlined, Icons.bar_chart, 'STATS'),
+    (Icons.settings_outlined, Icons.settings, 'SETUP'),
   ];
 
   @override
@@ -573,31 +570,23 @@ class EtBottomNav extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.outlineVariant.withValues(alpha: 0.45),
-          ),
+        color: (isDark ? AppColors.cardDark : AppColors.background)
+            .withValues(alpha: 0.92),
+        border: const Border(
+          top: BorderSide(color: AppColors.outlineVariant),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 64,
+          height: 58,
           child: Row(
             children: [
               for (var i = 0; i < _items.length; i++)
                 Expanded(
                   child: _NavTab(
-                    icon: _items[i].$1,
-                    label: _items[i].$2,
+                    icon: selectedIndex == i ? _items[i].$2 : _items[i].$1,
+                    label: _items[i].$3,
                     selected: selectedIndex == i,
                     onTap: () => onDestinationSelected(i),
                   ),
@@ -625,32 +614,22 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : const Color(0xFF9AA0AE);
+    final color = selected ? AppColors.primary : AppColors.onSurfaceVariant;
 
     return InkWell(
       onTap: onTap,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: selected ? 28 : 0,
-            height: 3,
-            margin: const EdgeInsets.only(bottom: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           Icon(icon, color: color, size: 22),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             label,
-            style: TextStyle(
+            style: GoogleFonts.ibmPlexMono(
               color: color,
-              fontSize: 10,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              letterSpacing: 0.1,
+              fontSize: 9,
+              letterSpacing: 0.6,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -666,22 +645,16 @@ class EtAddFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(AppRadii.fab),
+      child: InkWell(
+        onTap: onPressed,
         borderRadius: BorderRadius.circular(AppRadii.fab),
-        boxShadow: AppShadows.fab,
-      ),
-      child: Material(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(AppRadii.fab),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(AppRadii.fab),
-          child: const SizedBox(
-            width: 58,
-            height: 58,
-            child: Icon(Icons.add_rounded, color: Colors.white, size: 30),
-          ),
+        child: const SizedBox(
+          width: 52,
+          height: 52,
+          child: Icon(Icons.add_rounded, color: Colors.white, size: 26),
         ),
       ),
     );
@@ -703,7 +676,7 @@ class EtFilterChipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin),
@@ -713,22 +686,24 @@ class EtFilterChipBar extends StatelessWidget {
           final selected = index == selectedIndex;
           return GestureDetector(
             onTap: () => onSelected(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerHigh,
+                    ? AppColors.ink
+                    : AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(AppRadii.pill),
+                border: selected
+                    ? null
+                    : Border.all(color: AppColors.outlineVariant),
               ),
               child: Text(
-                labels[index],
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  letterSpacing: 0.3,
+                labels[index].toUpperCase(),
+                style: GoogleFonts.ibmPlexMono(
+                  color: selected ? Colors.white : AppColors.body,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                  letterSpacing: 0.8,
                 ),
               ),
             ),
@@ -739,13 +714,76 @@ class EtFilterChipBar extends StatelessWidget {
   }
 }
 
+class EtSegmented extends StatelessWidget {
+  const EtSegmented({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+    super.key,
+  });
+
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelected(i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selectedIndex == i
+                        ? AppColors.surfaceContainerLowest
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: selectedIndex == i
+                        ? [
+                            BoxShadow(
+                              color: AppColors.ink.withValues(alpha: 0.08),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    labels[i],
+                    style: GoogleFonts.archivo(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selectedIndex == i
+                          ? AppColors.ink
+                          : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 Future<DateTime?> etPickMonth(BuildContext context, DateTime current) async {
   var selected = DateTime(current.year, current.month);
   return showModalBottomSheet<DateTime>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.surfaceContainerLowest,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (ctx) {
       return StatefulBuilder(
@@ -766,9 +804,10 @@ Future<DateTime?> etPickMonth(BuildContext context, DateTime current) async {
                 const SizedBox(height: 16),
                 Text(
                   'Select month',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: GoogleFonts.archivo(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -781,12 +820,13 @@ Future<DateTime?> etPickMonth(BuildContext context, DateTime current) async {
                     ),
                     Expanded(
                       child: Text(
-                        DateFormat('MMMM yyyy').format(selected),
+                        DateFormat('MMMM yyyy').format(selected).toUpperCase(),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                        style: GoogleFonts.ibmPlexMono(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                          color: AppColors.ink,
                         ),
                       ),
                     ),

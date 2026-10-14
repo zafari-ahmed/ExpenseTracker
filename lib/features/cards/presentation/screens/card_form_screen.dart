@@ -86,8 +86,9 @@ class _CardFormScreenState extends ConsumerState<CardFormScreen> {
       _isActive = selected.isActive;
       final iconIdx = _iconKeys.indexOf(selected.cardIcon);
       _iconIndex = iconIdx >= 0 ? iconIdx : 0;
-      if (selected.cardIcon.startsWith('theme:')) {
-        final t = int.tryParse(selected.cardIcon.split(':').last) ?? 0;
+                    if (selected.cardIcon.startsWith('theme:')) {
+        final raw = selected.cardIcon.substring(6).split('|').first;
+        final t = int.tryParse(raw) ?? 0;
         _themeIndex = t.clamp(0, AppColors.cardThemes.length - 1);
       }
     });
@@ -116,9 +117,9 @@ class _CardFormScreenState extends ConsumerState<CardFormScreen> {
       final configureSms = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Add sample bank SMS?'),
+              title: const Text('Configure SMS format?'),
               content: const Text(
-                'Paste one transaction SMS for this card so future messages can be auto-detected.',
+                'We’ll pull the latest inbox SMS from this card’s sender so you can confirm amount and merchant.',
               ),
               actions: [
                 TextButton(
@@ -156,28 +157,9 @@ class _CardFormScreenState extends ConsumerState<CardFormScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-                  ),
-                  Expanded(
-                    child: Text(
-                      _editing == null ? 'Add Card' : 'Edit Card',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                  const EtAvatar(size: 36),
-                ],
-              ),
+            EtPageHeader(
+              title: _editing == null ? 'Add a card' : 'Edit card',
+              closeInsteadOfBack: true,
             ),
             Expanded(
               child: Form(
@@ -246,7 +228,8 @@ class _CardFormScreenState extends ConsumerState<CardFormScreen> {
                                         margin: const EdgeInsets.only(right: 10),
                                         decoration: BoxDecoration(
                                           color: AppColors.cardThemes[i],
-                                          shape: BoxShape.circle,
+                                          borderRadius:
+                                              BorderRadius.circular(9),
                                           border: Border.all(
                                             color: _themeIndex == i
                                                 ? AppColors.primary

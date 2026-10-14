@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/constants/app_info.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
@@ -18,47 +18,10 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  final _pageController = PageController();
-  int _page = 0;
   bool _loading = false;
   String _status = '';
 
-  static const _steps = [
-    (
-      AppAssets.splashShield,
-      Icons.shield_outlined,
-      'Your data stays on this phone',
-      'Cards, SMS parses, and spending history are stored in the app’s private storage. They are not uploaded to our servers, and we do not sell your information.',
-    ),
-    (
-      null,
-      Icons.sms_outlined,
-      'Bank SMS becomes expenses',
-      'This app’s core feature is SMS-based money management: it reads debit SMS from your bank or card and turns matching messages into expenses. You can still add expenses by hand.',
-    ),
-    (
-      null,
-      Icons.privacy_tip_outlined,
-      'SMS access disclosure',
-      'The next step asks Android for SMS permission so the app can read and receive bank and wallet debit messages.',
-    ),
-  ];
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
   Future<void> _continue({required bool requestSms}) async {
-    if (_page < _steps.length - 1) {
-      await _pageController.nextPage(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
-      return;
-    }
-
     if (!requestSms) {
       await _finishToDashboard();
       return;
@@ -124,157 +87,157 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLast = _page == _steps.length - 1;
-
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.ink,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin),
+          padding: const EdgeInsets.fromLTRB(24, 36, 24, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
-              Text(
-                AppInfo.name,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBright,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.sms_outlined, color: AppColors.ink),
               ),
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _steps.length,
-                  onPageChanged: (i) => setState(() => _page = i),
-                  itemBuilder: (context, index) {
-                    final step = _steps[index];
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 24),
-                          Container(
-                            width: 180,
-                            height: 180,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.surfaceContainerLow,
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: step.$1 != null
-                                ? Image.asset(step.$1!, fit: BoxFit.cover)
-                                : Icon(
-                                    step.$2,
-                                    size: 88,
-                                    color: AppColors.primary,
-                                  ),
-                          ),
-                          const SizedBox(height: AppSpacing.section),
-                          Text(
-                            step.$3,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 12),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 320),
-                            child: Text(
-                              step.$4,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge
-                                  ?.copyWith(color: AppColors.onSurfaceVariant),
-                            ),
-                          ),
-                          if (index == 2) ...[
-                            const SizedBox(height: 16),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 340),
-                              child: Text(
-                                'We request READ_SMS and RECEIVE_SMS only to detect bank and card debit messages and save them as expenses on this device.\n\n'
-                                'We do not send SMS. We do not read OTP or 5-digit verification codes. Matching messages stay on this phone and are not uploaded.',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: AppColors.onSurface,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
+              const SizedBox(height: 26),
+              Text(
+                'Your bank already\ntells you every spend.',
+                style: GoogleFonts.archivo(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                  letterSpacing: -1.1,
+                  color: Colors.white,
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                'Let Expense Tracker read those alerts and file them for you. No manual entry, ever.',
+                style: GoogleFonts.archivo(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: AppColors.soft,
+                ),
+              ),
+              const SizedBox(height: 26),
+              const _CheckRow(
+                title: 'Only your chosen bank senders',
+                subtitle: 'Personal messages are never opened.',
+              ),
+              const SizedBox(height: 14),
+              const _CheckRow(
+                title: 'Parsed on this device',
+                subtitle: 'Nothing is uploaded to a server.',
+              ),
+              const SizedBox(height: 14),
+              const _CheckRow(
+                title: 'Revocable any time',
+                subtitle: 'Turn it off in Settings; data stays.',
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'We request READ_SMS and RECEIVE_SMS only to detect bank and card debit messages. We do not send SMS, and we do not read OTP or 5-digit verification codes.',
+                style: GoogleFonts.archivo(
+                  fontSize: 13,
+                  height: 1.45,
+                  color: AppColors.soft,
+                ),
+              ),
+              const Spacer(),
               if (_status.isNotEmpty) ...[
                 Text(
                   _status,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.error,
-                      ),
+                  style: GoogleFonts.archivo(
+                    fontSize: 13,
+                    color: AppColors.primaryBright,
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < _steps.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: i == _page ? 18 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: i == _page
-                            ? AppColors.primary
-                            : AppColors.outlineVariant,
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                    ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _loading ? null : () => _continue(requestSms: true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryBright,
+                    foregroundColor: AppColors.ink,
+                  ),
+                  child: Text(_loading ? 'Requesting...' : 'Allow SMS access'),
+                ),
               ),
-              const SizedBox(height: AppSpacing.section),
-              if (Platform.isAndroid && isLast) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _loading
-                        ? null
-                        : () => _continue(requestSms: true),
-                    child: Text(
-                      _loading ? 'Requesting...' : 'Allow SMS tracking',
-                    ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed:
+                      _loading ? null : () => _continue(requestSms: false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: AppColors.inkMuted),
+                  ),
+                  child: const Text('Add expenses manually instead'),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: Text(
+                  'READS SMS · NEVER SENDS THEM',
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 10,
+                    letterSpacing: 0.8,
+                    color: AppColors.onSurfaceVariant,
                   ),
                 ),
-                TextButton(
-                  onPressed: _loading
-                      ? null
-                      : () => _continue(requestSms: false),
-                  child: const Text('Not now — add expenses manually'),
-                ),
-              ] else
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _loading
-                        ? null
-                        : () => _continue(requestSms: true),
-                    child: const Text('Continue'),
-                  ),
-                ),
-              const SizedBox(height: 12),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CheckRow extends StatelessWidget {
+  const _CheckRow({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.check_circle, color: AppColors.successBright, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.archivo(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: GoogleFonts.archivo(
+                  fontSize: 13,
+                  color: AppColors.soft,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,11 +5,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/cards/domain/sms_parser.dart';
 import '../../features/transactions/presentation/providers/transactions_provider.dart';
 import '../database/isar_instance.dart';
 import 'notification_runtime.dart';
 import 'service_providers.dart';
 import 'sms_process_result.dart';
+
+class LatestSenderSms {
+  const LatestSenderSms({
+    required this.senderId,
+    required this.body,
+    required this.receivedAt,
+  });
+
+  final String senderId;
+  final String body;
+  final DateTime receivedAt;
+}
 
 /// Bumps whenever SMS sync creates/updates data so UI can refresh.
 final smsSyncTickProvider = StateProvider<int>((ref) => 0);
@@ -172,6 +185,91 @@ class SmsListenerService {
     }
 
     return createdCount;
+  }
+
+  /// Latest inbox SMS from [senderId], preferring a debit/expense message
+  /// over OTP or credit alerts when possible.
+  Future<LatestSenderSms?> latestInboxSmsForSender({
+    required String senderId,
+    String? lastFourDigits,
+  }) async {
+    if (!Platform.isAndroid) return null;
+    final configured = _normalizeSender(senderId);
+    if (configured.isEmpty) return null;
+
+    final granted =
+        await _ref.read(permissionServiceProvider).isSmsGranted();
+    if (!granted) return null;
+
+    try {
+      final since = DateTime.now()
+          .subtract(const Duration(days: 90))
+          .millisecondsSinceEpoch;
+      final messages = await _telephony.getInboxSms(
+        columns: [
+          telephony.SmsColumn.ADDRESS,
+          telephony.SmsColumn.BODY,
+          telephony.SmsColumn.DATE,
+        ],
+        filter: telephony.SmsFilter.where(telephony.SmsColumn.DATE)
+            .greaterThanOrEqualTo('$since'),
+        sortOrder: [
+          telephony.OrderBy(
+            telephony.SmsColumn.DATE,
+            sort: telephony.Sort.DESC,
+          ),
+        ],
+      );
+
+      LatestSenderSms? withDigits;
+      LatestSenderSms? expenseLike;
+      LatestSenderSms? anyFromSender;
+      final digits = lastFourDigits?.trim();
+
+      for (final message in messages) {
+        final address = message.address?.trim() ?? '';
+        final body = message.body?.trim() ?? '';
+        if (address.isEmpty || body.isEmpty) continue;
+        if (!_senderMatches(address, configured)) continue;
+
+        final receivedAt = message.date != null
+            ? DateTime.fromMillisecondsSinceEpoch(message.date!)
+            : DateTime.now();
+        final item = LatestSenderSms(
+          senderId: address,
+          body: body,
+          receivedAt: receivedAt,
+        );
+        anyFromSender ??= item;
+
+        if (SmsParser.shouldIgnoreSms(body)) continue;
+        expenseLike ??= item;
+
+        if (digits != null &&
+            digits.length >= 4 &&
+            body.toLowerCase().contains(digits.toLowerCase())) {
+          withDigits = item;
+          break;
+        }
+      }
+
+      return withDigits ?? expenseLike ?? anyFromSender;
+    } catch (e, st) {
+      debugPrint('Latest sender SMS lookup failed: $e\n$st');
+      return null;
+    }
+  }
+
+  static String _normalizeSender(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  static bool _senderMatches(String address, String configuredNormalized) {
+    final addr = _normalizeSender(address);
+    if (addr.isEmpty || configuredNormalized.isEmpty) return false;
+    return addr == configuredNormalized ||
+        addr.contains(configuredNormalized) ||
+        configuredNormalized.contains(addr);
   }
 
   void _invalidateUi() {

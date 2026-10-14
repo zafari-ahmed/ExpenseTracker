@@ -7,6 +7,7 @@ import 'core/routing/app_router.dart';
 import 'core/services/service_providers.dart';
 import 'core/services/sms_listener_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/settings/presentation/providers/preferences_provider.dart';
 
 class ExpenseTrackerApp extends ConsumerStatefulWidget {
   const ExpenseTrackerApp({super.key});
@@ -56,17 +57,17 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeProvider);
     // Keep SMS bootstrap alive while app runs.
     ref.watch(smsBootstrapProvider);
     ref.watch(smsSyncTickProvider);
+    ref.watch(currencyProvider);
 
     return MaterialApp.router(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
+      darkTheme: AppTheme.light(),
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

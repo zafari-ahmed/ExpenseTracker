@@ -11,6 +11,7 @@ class AppPreferencesService {
   static const _profileName = 'profile_name';
   static const _lastSmsScanMillis = 'last_sms_scan_millis';
   static const _spendPeriodMode = 'spend_period_mode';
+  static const _currencyCode = 'display_currency_code';
   static const _expenseAddedNotificationsEnabled =
       'expense_added_notifications_enabled';
   static const _thresholdAlertSentPrefix = 'threshold_alert_sent_';
@@ -156,6 +157,16 @@ class AppPreferencesService {
   Future<void> setSpendPeriodMode(SpendPeriodMode mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_spendPeriodMode, mode.storageValue);
+  }
+
+  Future<String> currencyCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_currencyCode) ?? 'PKR';
+  }
+
+  Future<void> setCurrencyCode(String code) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyCode, code.trim().toUpperCase());
   }
 
   static const _customSmsIgnoreList = 'custom_sms_ignore_list';

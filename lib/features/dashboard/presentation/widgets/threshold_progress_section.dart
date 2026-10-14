@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../providers/threshold_status_provider.dart';
 
 class ThresholdProgressSection extends ConsumerWidget {
@@ -11,6 +12,7 @@ class ThresholdProgressSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(currencyProvider);
     final statusesAsync = ref.watch(categoryThresholdStatusesProvider);
 
     return statusesAsync.when(

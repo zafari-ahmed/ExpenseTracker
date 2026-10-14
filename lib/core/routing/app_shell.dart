@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/design_tokens.dart';
 import '../widgets/stitch_widgets.dart';
 
-class AppShell extends StatelessWidget {
+final hideAddFabProvider = StateProvider<bool>((ref) => false);
+
+Future<T?> runWithHiddenAddFab<T>(
+  WidgetRef ref,
+  Future<T?> Function() action,
+) async {
+  ref.read(hideAddFabProvider.notifier).state = true;
+  try {
+    return await action();
+  } finally {
+    ref.read(hideAddFabProvider.notifier).state = false;
+  }
+}
+
+class AppShell extends ConsumerWidget {
   const AppShell({
     required this.navigationShell,
     super.key,
@@ -13,12 +28,14 @@ class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
-    final showFab = navigationShell.currentIndex == 0 ||
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hideFab = ref.watch(hideAddFabProvider);
+    final onListTab = navigationShell.currentIndex == 0 ||
         navigationShell.currentIndex == 1;
+    final showFab = onListTab && !hideFab;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: navigationShell,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: showFab

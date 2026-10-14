@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../constants/app_currency.dart';
+
 /// Edit the strings in this file to change all push / local notification text.
 ///
 /// Placeholders use {name} syntax and are filled by the helper methods below.
@@ -62,10 +64,10 @@ class NotificationMessages {
 
   // ── Formatters ────────────────────────────────────────────────────────────
 
-  static final NumberFormat _money =
-      NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
-
-  static String money(num value) => _money.format(value);
+  static String money(num value) => NumberFormat.currency(
+        symbol: CurrencyStore.current.symbol,
+        decimalDigits: 0,
+      ).format(value);
 
   static String _apply(String template, Map<String, String> values) {
     var out = template;
