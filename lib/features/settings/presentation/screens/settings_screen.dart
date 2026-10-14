@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/app_currency.dart';
 import '../../../../core/constants/app_info.dart';
@@ -18,7 +17,6 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
-import '../../../categories/data/models/category_threshold_model.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../../dashboard/presentation/providers/threshold_status_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
@@ -31,7 +29,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsync = ref.watch(notificationPrefsProvider);
-    final thresholdsAsync = ref.watch(thresholdsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final cardsAsync = ref.watch(cardsListProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
@@ -171,6 +168,12 @@ class SettingsScreen extends ConsumerWidget {
             prefsAsync.when(
               data: (prefs) => _SettingsGroup(
                 children: [
+                  _SettingsRow(
+                    icon: Icons.tune_outlined,
+                    title: 'Category thresholds',
+                    subtitle: 'Set monthly limits per category',
+                    onTap: () => context.push('/settings/thresholds'),
+                  ),
                   _SettingsRow(
                     icon: Icons.notifications_active_outlined,
                     title: 'Spending Limits',
@@ -377,47 +380,6 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => _deleteLocalData(context, ref),
                 ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.section),
-            const EtLabelCaps('Category Thresholds'),
-            const SizedBox(height: 8),
-            categoriesAsync.when(
-              data: (categories) => thresholdsAsync.when(
-                data: (thresholds) => Column(
-                  children: [
-                    for (final c in categories)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: EtSurfaceCard(
-                          radius: AppRadii.card,
-                          child: _ThresholdTile(
-                            categoryId: c.id,
-                            categoryName: c.name,
-                            threshold: _findThreshold(thresholds, c.id),
-                            onSave: (limit, percent) async {
-                              final threshold =
-                                  _findThreshold(thresholds, c.id) ??
-                                      (CategoryThresholdModel()
-                                        ..id = const Uuid().v4()
-                                        ..categoryId = c.id);
-                              threshold
-                                ..monthlyLimit = limit
-                                ..notifyAtPercent = percent;
-                              await ref
-                                  .read(categoryMutationsProvider)
-                                  .upsertThreshold(threshold);
-                              ref.invalidate(categoryThresholdStatusesProvider);
-                            },
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                error: (e, _) => Text('Error: $e'),
-                loading: () => const LinearProgressIndicator(),
-              ),
-              error: (e, _) => Text('Error: $e'),
-              loading: () => const LinearProgressIndicator(),
             ),
             const SizedBox(height: 20),
             Center(
@@ -867,172 +829,3 @@ class _SettingsToggleRow extends StatelessWidget {
   }
 }
 
-CategoryThresholdModel? _findThreshold(
-  List<CategoryThresholdModel> thresholds,
-  String categoryId,
-) {
-  for (final item in thresholds) {
-    if (item.categoryId == categoryId) return item;
-  }
-  return null;
-}
-
-class _ThresholdTile extends ConsumerStatefulWidget {
-  const _ThresholdTile({
-    required this.categoryId,
-    required this.categoryName,
-    required this.threshold,
-    required this.onSave,
-  });
-
-  final String categoryId;
-  final String categoryName;
-  final CategoryThresholdModel? threshold;
-  final Future<void> Function(double limit, int percent) onSave;
-
-  @override
-  ConsumerState<_ThresholdTile> createState() => _ThresholdTileState();
-}
-
-class _ThresholdTileState extends ConsumerState<_ThresholdTile> {
-  late final TextEditingController _limitCtrl;
-  late double _percent;
-
-  @override
-  void initState() {
-    super.initState();
-    _limitCtrl =
-        TextEditingController(text: '${widget.threshold?.monthlyLimit ?? 0}');
-    _percent = (widget.threshold?.notifyAtPercent ?? 80).toDouble();
-  }
-
-  @override
-  void dispose() {
-    _limitCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusAsync = ref.watch(categoryThresholdStatusesProvider);
-    final status = statusAsync.maybeWhen(
-      data: (rows) {
-        for (final row in rows) {
-          if (row.categoryId == widget.categoryId) return row;
-        }
-        return null;
-      },
-      orElse: () => null,
-    );
-
-    final barColor = status == null
-        ? AppColors.primary
-        : status.level == ThresholdLevel.exceeded
-            ? AppColors.error
-            : status.level == ThresholdLevel.warning
-                ? AppColors.warning
-                : AppColors.success;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            EtCategoryBadge(category: widget.categoryName, size: 36, iconSize: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.categoryName,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-            ),
-            if (status != null)
-              Text(
-                '${status.percentUsed.toStringAsFixed(0)}%',
-                style: TextStyle(
-                  color: barColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-          ],
-        ),
-        if (status != null) ...[
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: (status.percentUsed / 100).clamp(0.0, 1.0),
-              minHeight: 8,
-              color: barColor,
-              backgroundColor: AppColors.surfaceContainerHigh,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${EtMoney.format(status.spent)} of ${EtMoney.format(status.monthlyLimit)}',
-            style: const TextStyle(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 13,
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _limitCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Monthly limit',
-                  isDense: true,
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              children: [
-                Text(
-                  'Alert ${_percent.toInt()}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                SizedBox(
-                  width: 120,
-                  child: Slider(
-                    min: 50,
-                    max: 100,
-                    divisions: 10,
-                    value: _percent,
-                    onChanged: (value) => setState(() => _percent = value),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            onPressed: () async {
-              final limit = double.tryParse(_limitCtrl.text.trim()) ?? 0;
-              final messenger = ScaffoldMessenger.of(context);
-              await widget.onSave(limit, _percent.toInt());
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text('${widget.categoryName} threshold saved'),
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(minimumSize: const Size(110, 40)),
-            child: const Text('Save'),
-          ),
-        ),
-      ],
-    );
-  }
-}
