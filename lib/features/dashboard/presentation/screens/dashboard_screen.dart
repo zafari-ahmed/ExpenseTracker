@@ -482,13 +482,13 @@ List<double> _weekSpark(List<TransactionModel> rows) {
 }
 
 String _txnMeta(TransactionModel row, CardModel? card) {
-  final time = DateFormat('HH:mm').format(row.transactionDate);
   final bank = card?.bankName.isNotEmpty == true
       ? card!.bankName
       : (card?.cardName ?? 'CARD');
   final digits = card?.lastFourDigits;
   final tail = digits == null || digits.isEmpty ? bank : '$bank ····$digits';
-  return '$time · $tail';
+  final time = EtTxnTime.clock(row.transactionDate);
+  return time == null ? tail : '$time · $tail';
 }
 
 List<TransactionModel> _rowsForPeriod(

@@ -89,6 +89,20 @@ abstract final class AppTheme {
       cardColor: AppColors.surfaceContainerLowest,
       splashFactory: InkRipple.splashFactory,
       textTheme: _textTheme(ThemeData.light().textTheme, onSurface: AppColors.ink),
+      dialogTheme: DialogThemeData(
+        titleTextStyle: GoogleFonts.archivo(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: AppColors.ink,
+          height: 1.25,
+        ),
+        contentTextStyle: GoogleFonts.archivo(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.body,
+          height: 1.4,
+        ),
+      ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: AppColors.background,

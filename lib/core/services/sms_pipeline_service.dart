@@ -72,7 +72,9 @@ class SmsPipelineService {
     card ??= await _matchCardByRule(cards, trimmedBody, receivedAt);
     if (card == null) return const SmsProcessResult.none();
 
-    final rule = await _ruleForCard(card, sampleBody: trimmedBody);
+    final rule = await _cardsRepository.getRuleForCard(card.id);
+    if (rule == null) return const SmsProcessResult.none();
+
     return processSms(
       card: card,
       rule: rule,
@@ -117,15 +119,28 @@ class SmsPipelineService {
       return const SmsProcessResult.none();
     }
 
+    final sample = rule.sampleMessage.trim();
+    if (sample.isNotEmpty) {
+      if (!SmsParser.matchesConfiguredSample(body, sample)) {
+        return const SmsProcessResult.none();
+      }
+    } else if (!SmsParser.hasExpenseSignal(lowerBody)) {
+      return const SmsProcessResult.none();
+    }
+
     final parsed = SmsParser.parse(
       smsBody: body,
       amountPattern: rule.amountPattern,
       placePattern: rule.placePattern,
       datePattern: rule.datePattern,
       fallbackDate: receivedAt ?? DateTime.now(),
+      strict: true,
     );
 
     if (parsed == null) {
+      if (!SmsParser.hasExpenseSignal(lowerBody)) {
+        return const SmsProcessResult.none();
+      }
       await _transactionsRepository.addNeedsReview(
         cardId: card.id,
         senderId: senderId,
@@ -219,12 +234,17 @@ class SmsPipelineService {
       final rule = await _cardsRepository.getRuleForCard(card.id);
       if (rule == null) continue;
 
+      if (rule.sampleMessage.trim().isNotEmpty &&
+          !SmsParser.matchesConfiguredSample(body, rule.sampleMessage)) {
+        continue;
+      }
       final parsed = SmsParser.parse(
         smsBody: body,
         amountPattern: rule.amountPattern,
         placePattern: rule.placePattern,
         datePattern: rule.datePattern,
         fallbackDate: fallbackDate,
+        strict: true,
       );
       if (parsed == null) continue;
 
@@ -236,26 +256,6 @@ class SmsPipelineService {
     }
 
     return matchCount == 1 ? matched : null;
-  }
-
-  Future<SmsParsingRuleModel> _ruleForCard(
-    CardModel card, {
-    required String sampleBody,
-  }) async {
-    final existing = await _cardsRepository.getRuleForCard(card.id);
-    if (existing != null) return existing;
-
-    final suggestion = SmsParser.suggestFromSample(sampleBody);
-    final rule = SmsParsingRuleModel()
-      ..id = _uuid.v4()
-      ..cardId = card.id
-      ..sampleMessage = sampleBody
-      ..amountPattern = suggestion.amountPattern
-      ..placePattern = suggestion.placePattern
-      ..datePattern = suggestion.datePattern
-      ..excludeKeywords = List<String>.from(SmsParser.defaultIgnorePhrases);
-    await _cardsRepository.upsertParsingRule(rule);
-    return rule;
   }
 
   static String _normalizeSender(String value) {

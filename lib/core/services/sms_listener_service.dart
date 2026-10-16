@@ -24,6 +24,22 @@ class LatestSenderSms {
   final DateTime receivedAt;
 }
 
+class SmsSyncResult {
+  const SmsSyncResult({
+    this.createdCount = 0,
+    this.from,
+    this.to,
+    this.granted = true,
+    this.skipped = false,
+  });
+
+  final int createdCount;
+  final DateTime? from;
+  final DateTime? to;
+  final bool granted;
+  final bool skipped;
+}
+
 /// Bumps whenever SMS sync creates/updates data so UI can refresh.
 final smsSyncTickProvider = StateProvider<int>((ref) => 0);
 
@@ -110,23 +126,35 @@ class SmsListenerService {
     }
   }
 
-  /// Scan device inbox for card SMS since last successful sync (or last 14 days).
-  Future<int> syncInbox({bool forceFullWindow = false}) async {
-    if (!Platform.isAndroid || _scanning) return 0;
+  /// Scan device inbox for card SMS since last successful sync
+  /// (or the current calendar month on a full / first sync).
+  Future<SmsSyncResult> syncInbox({bool forceFullWindow = false}) async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month);
+    if (!Platform.isAndroid) {
+      return SmsSyncResult(from: monthStart, to: now, skipped: true);
+    }
+    if (_scanning) {
+      return SmsSyncResult(from: monthStart, to: now, skipped: true);
+    }
     _scanning = true;
     var createdCount = 0;
+    DateTime? from;
+    var to = now;
 
     try {
       final granted =
           await _ref.read(permissionServiceProvider).isSmsGranted();
-      if (!granted) return 0;
+      if (!granted) {
+        return SmsSyncResult(from: monthStart, to: now, granted: false);
+      }
 
       final prefs = _ref.read(appPreferencesServiceProvider);
       final lastScan = await prefs.lastSmsScanMillis();
-      final now = DateTime.now();
-      final sinceMillis = forceFullWindow || lastScan <= 0
-          ? now.subtract(const Duration(days: 14)).millisecondsSinceEpoch
-          : lastScan;
+      from = forceFullWindow || lastScan <= 0
+          ? monthStart
+          : DateTime.fromMillisecondsSinceEpoch(lastScan);
+      final sinceMillis = from.millisecondsSinceEpoch;
 
       final messages = await _telephony.getInboxSms(
         columns: [
@@ -174,6 +202,7 @@ class SmsListenerService {
         }
       }
 
+      to = now;
       await prefs.setLastSmsScanMillis(now.millisecondsSinceEpoch);
       if (createdCount > 0) {
         _invalidateUi();
@@ -184,7 +213,11 @@ class SmsListenerService {
       _scanning = false;
     }
 
-    return createdCount;
+    return SmsSyncResult(
+      createdCount: createdCount,
+      from: from ?? monthStart,
+      to: to,
+    );
   }
 
   /// Latest inbox SMS from [senderId], preferring a debit/expense message

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme/design_tokens.dart';
 import '../widgets/stitch_widgets.dart';
 
 final hideAddFabProvider = StateProvider<bool>((ref) => false);
@@ -34,26 +33,35 @@ class AppShell extends ConsumerWidget {
         navigationShell.currentIndex == 1;
     final showFab = onListTab && !hideFab;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: navigationShell,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: showFab
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: EtAddFab(
-                onPressed: () => context.push('/transactions/new'),
-              ),
-            )
-          : null,
-      bottomNavigationBar: EtBottomNav(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
+    final onDashboard = navigationShell.currentIndex == 0;
+
+    return PopScope(
+      canPop: onDashboard,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || onDashboard) return;
+        navigationShell.goBranch(0);
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: navigationShell,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: showFab
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: EtAddFab(
+                  onPressed: () => context.push('/transactions/new'),
+                ),
+              )
+            : null,
+        bottomNavigationBar: EtBottomNav(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: (index) {
+            navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
+            );
+          },
+        ),
       ),
     );
   }

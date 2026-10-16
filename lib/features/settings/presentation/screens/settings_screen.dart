@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_currency.dart';
-import '../../../../core/constants/app_info.dart';
 import '../../../../core/services/data_refresh.dart';
 import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/services/service_providers.dart';
@@ -114,22 +114,11 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Sync SMS now',
                   subtitle: 'Scan inbox for card transactions',
                   onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Scanning SMS inbox…')),
-                    );
-                    final count = await ref
+                    final result = await ref
                         .read(smsListenerServiceProvider)
                         .syncInbox(forceFullWindow: true);
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          count == 0
-                              ? 'No new card SMS found'
-                              : 'Imported $count transaction(s) from SMS',
-                        ),
-                      ),
-                    );
+                    if (!context.mounted) return;
+                    await _showSmsSyncAlert(context, result);
                   },
                 ),
                 _SettingsRow(
@@ -382,17 +371,53 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Center(
-              child: EtLabelCaps(
-                '${AppInfo.brand.toUpperCase()} ${AppInfo.versionLabel} · ON-DEVICE',
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
+}
+
+Future<void> _showSmsSyncAlert(
+  BuildContext context,
+  SmsSyncResult result,
+) async {
+  if (result.skipped) {
+    await etInfoAlert(
+      context,
+      title: 'SMS sync',
+      message: 'A sync is already running. Try again in a moment.',
+    );
+    return;
+  }
+  if (!result.granted) {
+    await etInfoAlert(
+      context,
+      title: 'SMS permission needed',
+      message: 'Allow SMS access to fetch inbox messages from your cards.',
+    );
+    return;
+  }
+
+  final from = result.from;
+  final to = result.to;
+  final dateLine = from == null || to == null
+      ? 'Fetched inbox SMS.'
+      : 'Fetched SMS from ${_formatSyncDay(from)} to ${_formatSyncDay(to)}.';
+  final countLine = result.createdCount == 0
+      ? 'No new card expenses found.'
+      : 'Imported ${result.createdCount} new expense(s).';
+
+  await etInfoAlert(
+    context,
+    title: 'SMS sync complete',
+    message: '$dateLine\n\n$countLine',
+  );
+}
+
+String _formatSyncDay(DateTime value) {
+  return DateFormat('d MMM yyyy').format(value);
 }
 
 Future<void> _pickCurrency(

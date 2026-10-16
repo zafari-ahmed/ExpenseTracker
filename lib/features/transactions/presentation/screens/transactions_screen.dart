@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/routing/app_shell.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../cards/data/models/card_model.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
@@ -55,26 +56,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     BuildContext context,
     TransactionModel row,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: Text(
-          row.source == TransactionSource.sms
-              ? 'This transaction came from SMS. Delete it permanently?'
-              : 'Delete this transaction permanently?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await etConfirmDelete(
+      context,
+      title: 'Delete transaction?',
+      message: row.source == TransactionSource.sms
+          ? 'This transaction came from SMS. Delete it permanently?'
+          : 'Delete this transaction permanently?',
     );
 
     if (confirmed != true || !mounted) return;
@@ -182,7 +169,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ...cards.map(
                           (c) => DropdownMenuItem(
                             value: c.id,
-                            child: Text(c.cardName),
+                            child: Text(_cardFilterLabel(c)),
                           ),
                         ),
                       ],
@@ -349,17 +336,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 4),
             cardsAsync.when(
               data: (cards) {
                 final labels = [
                   'All Transactions',
-                  ...cards.map((c) {
-                    final digits = c.lastFourDigits;
-                    return digits == null || digits.isEmpty
-                        ? c.cardName
-                        : '${c.cardName} *$digits';
-                  }),
+                  ...cards.map(_cardFilterLabel),
                 ];
                 var selected = 0;
                 if (filters.cardId != null) {
@@ -550,8 +531,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                   place: row.place,
                                   category: row.category,
                                   amount: row.amount,
-                                  subtitle:
-                                      '${row.category} · ${DateFormat('HH:mm').format(row.transactionDate)} · ${bankFor(row)}',
+                                  subtitle: () {
+                                    final clock =
+                                        EtTxnTime.clock(row.transactionDate);
+                                    return clock == null
+                                        ? '${row.category} · ${bankFor(row)}'
+                                        : '${row.category} · $clock · ${bankFor(row)}';
+                                  }(),
                                   onTap: () => _openEdit(context, row),
                                   onDelete: () =>
                                       _deleteTransaction(context, row),
@@ -575,6 +561,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 }
 
+String _cardFilterLabel(CardModel card) {
+  final name = card.cardName.trim();
+  final bank = card.bankName.trim();
+  final title = name.isNotEmpty
+      ? name
+      : (bank.isNotEmpty ? bank : 'Card');
+  final digits = card.lastFourDigits?.trim();
+  if (digits == null || digits.isEmpty) return title;
+  return '$title ····$digits';
+}
+
 class _FilterPill extends StatelessWidget {
   const _FilterPill({
     required this.label,
@@ -591,17 +588,21 @@ class _FilterPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        height: 36,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: selected ? Colors.white : AppColors.onSurfaceVariant,
             fontWeight: FontWeight.w600,
             fontSize: 12,
+            height: 1.0,
           ),
         ),
       ),
@@ -619,6 +620,8 @@ class _ActiveFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
+      height: 34,
+      alignment: Alignment.center,
       padding: const EdgeInsets.only(left: 12, right: 4),
       decoration: BoxDecoration(
         color: AppColors.primaryFixed,
@@ -626,6 +629,7 @@ class _ActiveFilterChip extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,

@@ -22,6 +22,103 @@ class EtMoney {
   }
 }
 
+class EtTxnTime {
+  static bool hasClock(DateTime value) =>
+      value.hour != 0 ||
+      value.minute != 0 ||
+      value.second != 0 ||
+      value.millisecond != 0;
+
+  static String? clock(DateTime value) {
+    if (!hasClock(value)) return null;
+    return DateFormat('HH:mm').format(value);
+  }
+}
+
+Future<bool> etConfirmDelete(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  final titleStyle = GoogleFonts.archivo(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+    height: 1.25,
+  );
+  final bodyStyle = GoogleFonts.archivo(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.body,
+    height: 1.4,
+  );
+  final actionStyle = GoogleFonts.archivo(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title, style: titleStyle),
+      content: Text(message, style: bodyStyle),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text('Cancel', style: actionStyle),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(
+            'Delete',
+            style: actionStyle.copyWith(color: AppColors.error),
+          ),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
+}
+
+Future<void> etInfoAlert(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  final titleStyle = GoogleFonts.archivo(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+    height: 1.25,
+  );
+  final bodyStyle = GoogleFonts.archivo(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.body,
+    height: 1.4,
+  );
+
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title, style: titleStyle),
+      content: Text(message, style: bodyStyle),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(
+            'OK',
+            style: GoogleFonts.archivo(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class EtBrandMark extends StatelessWidget {
   const EtBrandMark({super.key, this.size = 26});
 
@@ -676,7 +773,7 @@ class EtFilterChipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin),
@@ -684,26 +781,31 @@ class EtFilterChipBar extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final selected = index == selectedIndex;
-          return GestureDetector(
-            onTap: () => onSelected(index),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.ink
-                    : AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                border: selected
-                    ? null
-                    : Border.all(color: AppColors.outlineVariant),
-              ),
-              child: Text(
-                labels[index].toUpperCase(),
-                style: GoogleFonts.ibmPlexMono(
-                  color: selected ? Colors.white : AppColors.body,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 10,
-                  letterSpacing: 0.8,
+          return Center(
+            child: GestureDetector(
+              onTap: () => onSelected(index),
+              child: Container(
+                height: 36,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.ink
+                      : AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: selected
+                      ? null
+                      : Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Text(
+                  labels[index],
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.archivo(
+                    color: selected ? Colors.white : AppColors.body,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    height: 1.0,
+                  ),
                 ),
               ),
             ),

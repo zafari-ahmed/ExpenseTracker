@@ -64,6 +64,37 @@ abstract final class SmsParser {
     'money received',
   ];
 
+  /// Marketing / promo SMS from the same bank sender — skip unless the
+  /// message is also a real debit (see [hasExpenseSignal]).
+  static const List<String> promoIgnorePhrases = <String>[
+    'promotional',
+    'promotion',
+    'discount',
+    '% off',
+    'percent off',
+    'cashback offer',
+    'limited time offer',
+    'limited period offer',
+    'avail now',
+    't&c apply',
+    't & c apply',
+    'terms and conditions',
+    'click here',
+    'unsubscribe',
+    'offer expires',
+    'congratulations',
+    'you have won',
+    'lucky draw',
+    'use code',
+    'promo code',
+    'voucher',
+    'download the app',
+    'install now',
+    'shop now',
+    'flat rs',
+    'flat pkr',
+  ];
+
   /// Phrases that strongly indicate a spend / debit SMS.
   static const List<String> expenseSignalPhrases = <String>[
     'debited',
@@ -131,7 +162,29 @@ abstract final class SmsParser {
       return true;
     }
 
+    // Promo / discount alerts from the same sender are not expenses.
+    if (!hasExpenseSignal(lower)) {
+      for (final phrase in promoIgnorePhrases) {
+        if (lower.contains(phrase)) return true;
+      }
+    }
+
     return false;
+  }
+
+  /// True when [smsBody] shares the debit wording from the saved sample.
+  /// Promo/discount SMS from the same sender fail this check.
+  static bool matchesConfiguredSample(String smsBody, String sampleMessage) {
+    final sample = _normalizeSms(sampleMessage).toLowerCase();
+    final body = _normalizeSms(smsBody).toLowerCase();
+    if (sample.isEmpty || body.isEmpty) return false;
+
+    final sampleSignals =
+        expenseSignalPhrases.where(sample.contains).toList(growable: false);
+    if (sampleSignals.isEmpty) {
+      return hasExpenseSignal(body);
+    }
+    return sampleSignals.every(body.contains);
   }
 
   static List<String> effectiveDefaultIgnorePhrases({
@@ -433,21 +486,40 @@ abstract final class SmsParser {
     required String placePattern,
     String? datePattern,
     required DateTime fallbackDate,
+    bool strict = false,
   }) {
     final body = _normalizeSms(smsBody);
     if (body.isEmpty) {
       return null;
     }
 
-    final amount = _extractAmount(body, amountPattern);
+    final amount = strict
+        ? _firstAmount(body, amountPattern)
+        : _extractAmount(body, amountPattern);
     if (amount == null) {
       return null;
     }
 
-    final place = _cleanPlace(
-      _extractPlace(body, placePattern) ?? 'Unknown Merchant',
-    );
-    final transactionDate = _extractDate(body, datePattern) ?? fallbackDate;
+    final rawPlace = strict
+        ? _extractPlaceStrict(body, placePattern)
+        : _extractPlace(body, placePattern);
+    final place = _cleanPlace(rawPlace ?? (strict ? '' : 'Unknown Merchant'));
+    if (place.isEmpty || _looksLikeDate(place)) {
+      return null;
+    }
+
+    final extracted = _extractDate(body, datePattern);
+    final transactionDate = extracted == null
+        ? fallbackDate
+        : DateTime(
+            extracted.year,
+            extracted.month,
+            extracted.day,
+            fallbackDate.hour,
+            fallbackDate.minute,
+            fallbackDate.second,
+            fallbackDate.millisecond,
+          );
 
     return SmsParseResult(
       amount: amount,
@@ -514,6 +586,15 @@ abstract final class SmsParser {
       return amount;
     }
     return null;
+  }
+
+  static String? _extractPlaceStrict(String body, String pattern) {
+    if (pattern.trim().isEmpty) return null;
+    final match = _safeFirstMatch(pattern.trim(), body);
+    if (match == null) return null;
+    final place = _cleanPlace(_groupOrWhole(match) ?? '');
+    if (place.isEmpty || _looksLikeDate(place)) return null;
+    return place;
   }
 
   static String? _extractPlace(String body, String preferredPattern) {

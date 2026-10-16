@@ -74,22 +74,10 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: const Text('This permanently deletes the expense.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await etConfirmDelete(
+      context,
+      title: 'Delete transaction?',
+      message: 'This permanently deletes the expense.',
     );
     if (confirmed != true || !mounted) return;
     final id = widget.transaction.id;
@@ -110,9 +98,10 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
     final account = matched == null
         ? 'Account'
         : '${matched.bankName} ····${matched.lastFourDigits ?? '----'}';
-    final date = DateFormat('d MMM yyyy · HH:mm')
-        .format(widget.transaction.transactionDate)
-        .toUpperCase();
+    final dateFormat = EtTxnTime.hasClock(widget.transaction.transactionDate)
+        ? DateFormat('d MMM yyyy · HH:mm')
+        : DateFormat('d MMM yyyy');
+    final date = dateFormat.format(widget.transaction.transactionDate).toUpperCase();
 
     return Material(
       color: AppColors.background,
