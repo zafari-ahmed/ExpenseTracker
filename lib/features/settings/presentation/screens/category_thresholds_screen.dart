@@ -181,6 +181,12 @@ class _CategoryThresholdEditScreenState
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _limitCtrl.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _limitCtrl.dispose();
     super.dispose();
@@ -196,6 +202,37 @@ class _CategoryThresholdEditScreenState
       _limitCtrl.text = limitText;
       setState(() => _percent = percent);
     });
+  }
+
+  Future<void> _remove({
+    required CategoryModel category,
+    required CategoryThresholdModel? existing,
+  }) async {
+    if (_saving) return;
+    _limitCtrl.clear();
+    if (existing == null) {
+      setState(() {});
+      return;
+    }
+
+    final confirmed = await etConfirmDelete(
+      context,
+      title: 'Remove threshold?',
+      message: 'This turns off the monthly limit for ${category.name}.',
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _saving = true);
+    await ref.read(categoryMutationsProvider).deleteThreshold(category.id);
+    ref.invalidate(categoryThresholdStatusesProvider);
+    if (!mounted) return;
+    await etInfoAlert(
+      context,
+      title: 'Threshold removed',
+      message: '${category.name} monthly limit has been removed.',
+    );
+    if (!mounted) return;
+    context.go('/settings');
   }
 
   Future<void> _save({
@@ -361,9 +398,21 @@ class _CategoryThresholdEditScreenState
                         const SizedBox(height: 16),
                         TextField(
                           controller: _limitCtrl,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Monthly limit',
-                            helperText: 'Use 0 to turn the limit off',
+                            helperText: 'Tap X to remove this threshold',
+                            suffixIcon: _limitCtrl.text.trim().isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Remove threshold',
+                                    onPressed: _saving
+                                        ? null
+                                        : () => _remove(
+                                              category: category,
+                                              existing: existing,
+                                            ),
+                                    icon: const Icon(Icons.close),
+                                  ),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,

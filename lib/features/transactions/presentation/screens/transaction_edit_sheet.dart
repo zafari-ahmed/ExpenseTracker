@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_currency.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/data/models/card_model.dart';
@@ -25,6 +26,7 @@ class TransactionEditSheet extends ConsumerStatefulWidget {
 
 class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   late final TextEditingController _placeCtrl;
+  late final TextEditingController _amountCtrl;
   late final TextEditingController _descriptionCtrl;
   String? _category;
   bool _saving = false;
@@ -34,6 +36,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   void initState() {
     super.initState();
     _placeCtrl = TextEditingController(text: widget.transaction.place);
+    _amountCtrl = TextEditingController(text: _formatAmountInput(widget.transaction.amount));
     _descriptionCtrl =
         TextEditingController(text: widget.transaction.description);
     _category = widget.transaction.category;
@@ -43,8 +46,22 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   @override
   void dispose() {
     _placeCtrl.dispose();
+    _amountCtrl.dispose();
     _descriptionCtrl.dispose();
     super.dispose();
+  }
+
+  String _formatAmountInput(double amount) {
+    if (amount == amount.roundToDouble()) {
+      return amount.round().toString();
+    }
+    return amount.toString();
+  }
+
+  double? _parseAmount(String raw) {
+    final cleaned = raw.replaceAll(',', '').replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) return null;
+    return double.tryParse(cleaned);
   }
 
   bool get _hasSms {
@@ -59,6 +76,14 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
     final place = _placeCtrl.text.trim();
     final description = _descriptionCtrl.text.trim();
     final category = _category ?? 'Uncategorized';
+    final amount = _parseAmount(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
     final transactionId = widget.transaction.id;
 
     if (mounted) Navigator.of(context).pop();
@@ -69,6 +94,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
           place: place,
           description: description,
           category: category,
+          amount: amount,
           rememberForFuture: _rememberForFuture,
         );
   }
@@ -132,31 +158,76 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                 iconSize: 24,
               ),
               const SizedBox(height: 10),
-              Text(
-                EtMoney.format(widget.transaction.amount),
-                style: GoogleFonts.archivo(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.2,
-                  height: 1,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    CurrencyStore.current.symbol.trim(),
+                    style: GoogleFonts.archivo(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: TextField(
+                      controller: _amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: GoogleFonts.archivo(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2,
+                        height: 1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: '0',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: AppColors.soft,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _placeCtrl,
-                style: GoogleFonts.archivo(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Merchant',
-                  filled: false,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _placeCtrl,
+                      style: GoogleFonts.archivo(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Merchant',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: AppColors.soft,
+                  ),
+                ],
               ),
               EtLabelCaps(date),
               const SizedBox(height: 14),
@@ -211,9 +282,11 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                     _MetaRow(
                       label: 'SOURCE',
                       child: Text(
-                        widget.transaction.source == TransactionSource.sms
-                            ? 'SMS · auto'
-                            : 'Manual',
+                        widget.transaction.source == TransactionSource.smsEdited
+                            ? 'SMS · edited'
+                            : widget.transaction.source == TransactionSource.sms
+                                ? 'SMS · auto'
+                                : 'Manual',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -236,12 +309,21 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.greenTint,
+                              color: widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? AppColors.amberTint
+                                  : AppColors.greenTint,
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: EtLabelCaps(
-                              'AUTO-PARSED',
-                              color: AppColors.success,
+                              widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? 'EDITED'
+                                  : 'AUTO-PARSED',
+                              color: widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? AppColors.warning
+                                  : AppColors.success,
                             ),
                           ),
                         ],

@@ -23,13 +23,23 @@ class TransactionsRepository {
     required String place,
     required String description,
     required String category,
+    double? amount,
   }) async {
     final current = await getById(transactionId);
     if (current == null) {
       return;
     }
 
+    final nextAmount = amount ?? current.amount;
+    final amountChanged = nextAmount != current.amount;
+    final placeChanged = place.trim() != current.place.trim();
+    if (current.source == TransactionSource.sms &&
+        (amountChanged || placeChanged)) {
+      current.source = TransactionSource.smsEdited;
+    }
+
     current
+      ..amount = nextAmount
       ..place = place
       ..description = description
       ..category = category;

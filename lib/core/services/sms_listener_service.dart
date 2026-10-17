@@ -227,8 +227,7 @@ class SmsListenerService {
     String? lastFourDigits,
   }) async {
     if (!Platform.isAndroid) return null;
-    final configured = _normalizeSender(senderId);
-    if (configured.isEmpty) return null;
+    if (SmsParser.normalizeSender(senderId).isEmpty) return null;
 
     final granted =
         await _ref.read(permissionServiceProvider).isSmsGranted();
@@ -263,7 +262,7 @@ class SmsListenerService {
         final address = message.address?.trim() ?? '';
         final body = message.body?.trim() ?? '';
         if (address.isEmpty || body.isEmpty) continue;
-        if (!_senderMatches(address, configured)) continue;
+        if (!SmsParser.senderMatches(address, senderId)) continue;
 
         final receivedAt = message.date != null
             ? DateTime.fromMillisecondsSinceEpoch(message.date!)
@@ -291,18 +290,6 @@ class SmsListenerService {
       debugPrint('Latest sender SMS lookup failed: $e\n$st');
       return null;
     }
-  }
-
-  static String _normalizeSender(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-  }
-
-  static bool _senderMatches(String address, String configuredNormalized) {
-    final addr = _normalizeSender(address);
-    if (addr.isEmpty || configuredNormalized.isEmpty) return false;
-    return addr == configuredNormalized ||
-        addr.contains(configuredNormalized) ||
-        configuredNormalized.contains(addr);
   }
 
   void _invalidateUi() {

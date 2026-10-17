@@ -17,6 +17,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
+import '../../../onboarding/presentation/widgets/how_to_sheet.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../../dashboard/presentation/providers/threshold_status_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
@@ -83,6 +84,19 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
+            const EtLabelCaps('Help'),
+            const SizedBox(height: 8),
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.menu_book_outlined,
+                  title: 'How to use',
+                  subtitle: 'Add a card, sender ID, sample SMS, then sync',
+                  onTap: () => showHowToSheet(context, ref, markSeen: true),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.section),
             const EtLabelCaps('SMS & DATA'),
             const SizedBox(height: 8),
             _SettingsGroup(
@@ -719,10 +733,25 @@ Future<void> _changeProfileName(
       ),
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+            minimumSize: const Size(88, 44),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
           onPressed: () => Navigator.pop(ctx),
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(88, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
           onPressed: () => Navigator.pop(ctx, controller.text),
           child: const Text('Save'),
         ),

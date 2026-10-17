@@ -8,6 +8,7 @@ import '../../../../core/constants/app_info.dart';
 import '../../../../core/routing/app_shell.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/reviewer_demo_service.dart';
+import '../../../../core/services/service_providers.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
@@ -17,14 +18,38 @@ import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../transactions/data/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
+import '../../../onboarding/presentation/widgets/how_to_sheet.dart';
 import '../providers/dashboard_month_provider.dart';
 import '../providers/threshold_status_provider.dart';
 import '../widgets/threshold_progress_section.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
-  Future<void> _pickMonth(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _howToPrompted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowHowTo());
+  }
+
+  Future<void> _maybeShowHowTo() async {
+    if (_howToPrompted) return;
+    _howToPrompted = true;
+    final seen = await ref.read(onboardingServiceProvider).isHowToSeen();
+    if (seen || !mounted) return;
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    await showHowToSheet(context, ref);
+  }
+
+  Future<void> _pickMonth() async {
     final current = ref.read(dashboardMonthProvider);
     final picked = await runWithHiddenAddFab(
       ref,
@@ -46,7 +71,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final month = ref.watch(dashboardMonthProvider);
     final cardsAsync = ref.watch(activeCardsProvider);
     final allCardsAsync = ref.watch(cardsListProvider);
@@ -197,7 +222,7 @@ class DashboardScreen extends ConsumerWidget {
                         return Column(
                           children: [
                             GestureDetector(
-                              onTap: () => _pickMonth(context, ref),
+                              onTap: () => _pickMonth(),
                               child: Container(
                                 padding: const EdgeInsets.all(18),
                                 decoration: BoxDecoration(
@@ -337,7 +362,7 @@ class DashboardScreen extends ConsumerWidget {
                                         const EtLabelCaps('PARSED SMS'),
                                         const SizedBox(height: 8),
                                         Text(
-                                          '${monthRows.where((r) => r.source == TransactionSource.sms).length}',
+                                          '${monthRows.where((r) => r.source.fromSms).length}',
                                           style: GoogleFonts.archivo(
                                             fontSize: 20,
                                             fontWeight: FontWeight.w700,

@@ -93,6 +93,42 @@ abstract final class SmsParser {
     'shop now',
     'flat rs',
     'flat pkr',
+    'offer',
+    'cashback',
+    'save up to',
+    'exclusive',
+    'mega deal',
+    'star deal',
+    'win a',
+    'you have won',
+    'reward points',
+    'avail this',
+    'avail the',
+    't&cs',
+    'tnc apply',
+  ];
+
+  /// Strong debit wording. Promo copy with only weak phrases like "for rs"
+  /// must not create an expense.
+  static const List<String> strongExpenseSignalPhrases = <String>[
+    'debited',
+    'charged at',
+    'charged for',
+    'amount debited',
+    'amt debited',
+    'spent at',
+    'spent on',
+    'paid at',
+    'purchase at',
+    'purchased at',
+    'withdrawn',
+    'withdrawal',
+    'pos purchase',
+    'pos txn',
+    'pos transaction',
+    'txn at',
+    'transaction at',
+    'have been paid',
   ];
 
   /// Phrases that strongly indicate a spend / debit SMS.
@@ -162,14 +198,51 @@ abstract final class SmsParser {
       return true;
     }
 
-    // Promo / discount alerts from the same sender are not expenses.
-    if (!hasExpenseSignal(lower)) {
-      for (final phrase in promoIgnorePhrases) {
-        if (lower.contains(phrase)) return true;
-      }
+    // Promo / discount alerts: skip unless the SMS is clearly a debit.
+    if (_hasPromoPhrase(lower) && !hasStrongExpenseSignal(lower)) {
+      return true;
     }
 
     return false;
+  }
+
+  static bool _hasPromoPhrase(String lower) {
+    for (final phrase in promoIgnorePhrases) {
+      if (lower.contains(phrase)) return true;
+    }
+    return false;
+  }
+
+  static bool hasStrongExpenseSignal(String lowerBody) {
+    for (final phrase in strongExpenseSignalPhrases) {
+      if (lowerBody.contains(phrase)) return true;
+    }
+    return false;
+  }
+
+  /// Inbox sender vs the ID saved on the card.
+  /// Short numeric IDs must match exactly (or as a suffix), so "80" does
+  /// not match every "8080…" bank / promo sender.
+  static bool senderMatches(String address, String configured) {
+    final addr = normalizeSender(address);
+    final conf = normalizeSender(configured);
+    if (addr.isEmpty || conf.isEmpty) return false;
+    if (addr == conf) return true;
+
+    final shorter = addr.length <= conf.length ? addr : conf;
+    final longer = addr.length <= conf.length ? conf : addr;
+    if (shorter.length < 3) return false;
+
+    if (RegExp(r'^\d+$').hasMatch(shorter)) {
+      if (shorter.length < 4) return false;
+      return longer.endsWith(shorter);
+    }
+
+    return longer.contains(shorter);
+  }
+
+  static String normalizeSender(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
   /// True when [smsBody] shares the debit wording from the saved sample.

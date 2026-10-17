@@ -26,6 +26,11 @@ class AppCurrency {
     symbol: 'Rs ',
     name: 'Sri Lankan Rupee',
   );
+  static const myr = AppCurrency(
+    code: 'MYR',
+    symbol: 'RM ',
+    name: 'Malaysian Ringgit',
+  );
   static const usd = AppCurrency(
     code: 'USD',
     symbol: r'$',
@@ -76,6 +81,7 @@ class AppCurrency {
     pkr,
     bdt,
     lkr,
+    myr,
     usd,
     eur,
     gbp,

@@ -68,12 +68,13 @@ class SmsPipelineService {
     final cards = await _cardsRepository.getCards(activeOnly: true);
     if (cards.isEmpty) return const SmsProcessResult.none();
 
-    CardModel? card = _matchCard(cards, senderId: senderId, body: trimmedBody);
-    card ??= await _matchCardByRule(cards, trimmedBody, receivedAt);
+    final card = _matchCard(cards, senderId: senderId);
     if (card == null) return const SmsProcessResult.none();
 
     final rule = await _cardsRepository.getRuleForCard(card.id);
-    if (rule == null) return const SmsProcessResult.none();
+    if (rule == null || rule.sampleMessage.trim().isEmpty) {
+      return const SmsProcessResult.none();
+    }
 
     return processSms(
       card: card,
@@ -120,11 +121,14 @@ class SmsPipelineService {
     }
 
     final sample = rule.sampleMessage.trim();
-    if (sample.isNotEmpty) {
-      if (!SmsParser.matchesConfiguredSample(body, sample)) {
-        return const SmsProcessResult.none();
-      }
-    } else if (!SmsParser.hasExpenseSignal(lowerBody)) {
+    if (sample.isEmpty) {
+      return const SmsProcessResult.none();
+    }
+    if (!SmsParser.matchesConfiguredSample(body, sample)) {
+      return const SmsProcessResult.none();
+    }
+    if (!SmsParser.hasStrongExpenseSignal(lowerBody) &&
+        !SmsParser.hasExpenseSignal(lowerBody)) {
       return const SmsProcessResult.none();
     }
 
@@ -138,7 +142,7 @@ class SmsPipelineService {
     );
 
     if (parsed == null) {
-      if (!SmsParser.hasExpenseSignal(lowerBody)) {
+      if (!SmsParser.hasStrongExpenseSignal(lowerBody)) {
         return const SmsProcessResult.none();
       }
       await _transactionsRepository.addNeedsReview(
@@ -185,80 +189,13 @@ class SmsPipelineService {
   CardModel? _matchCard(
     List<CardModel> cards, {
     required String senderId,
-    required String body,
   }) {
-    final addr = _normalizeSender(senderId);
-    final bodyLower = body.toLowerCase();
-
     final senderMatches = cards.where((card) {
-      final configured = _normalizeSender(card.smsSenderId);
-      if (configured.isEmpty || addr.isEmpty) return false;
-      return addr == configured ||
-          addr.contains(configured) ||
-          configured.contains(addr);
+      return SmsParser.senderMatches(senderId, card.smsSenderId);
     }).toList();
 
-    if (senderMatches.isEmpty) {
-      final byDigits = cards.where((card) {
-        final digits = card.lastFourDigits?.trim();
-        if (digits == null || digits.length < 4) return false;
-        return bodyLower.contains(digits.toLowerCase());
-      }).toList();
-      if (byDigits.length == 1) return byDigits.first;
-      return null;
-    }
-
+    if (senderMatches.isEmpty) return null;
     if (senderMatches.length == 1) return senderMatches.first;
-
-    for (final card in senderMatches) {
-      final digits = card.lastFourDigits?.trim();
-      if (digits != null &&
-          digits.length >= 4 &&
-          bodyLower.contains(digits.toLowerCase())) {
-        return card;
-      }
-    }
     return senderMatches.first;
-  }
-
-  Future<CardModel?> _matchCardByRule(
-    List<CardModel> cards,
-    String body,
-    DateTime? receivedAt,
-  ) async {
-    CardModel? matched;
-    var matchCount = 0;
-    final fallbackDate = receivedAt ?? DateTime.now();
-
-    for (final card in cards) {
-      final rule = await _cardsRepository.getRuleForCard(card.id);
-      if (rule == null) continue;
-
-      if (rule.sampleMessage.trim().isNotEmpty &&
-          !SmsParser.matchesConfiguredSample(body, rule.sampleMessage)) {
-        continue;
-      }
-      final parsed = SmsParser.parse(
-        smsBody: body,
-        amountPattern: rule.amountPattern,
-        placePattern: rule.placePattern,
-        datePattern: rule.datePattern,
-        fallbackDate: fallbackDate,
-        strict: true,
-      );
-      if (parsed == null) continue;
-
-      matchCount++;
-      matched = card;
-      if (matchCount > 1) {
-        return null;
-      }
-    }
-
-    return matchCount == 1 ? matched : null;
-  }
-
-  static String _normalizeSender(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }

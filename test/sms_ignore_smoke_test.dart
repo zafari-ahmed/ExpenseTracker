@@ -69,6 +69,25 @@ void main() {
     );
   });
 
+  test('sender match does not treat another ID as the saved card', () {
+    expect(SmsParser.senderMatches('HBL', 'HBL'), isTrue);
+    expect(SmsParser.senderMatches('VM-HBLBK', 'HBL'), isTrue);
+    expect(SmsParser.senderMatches('8080', '8080'), isTrue);
+    expect(SmsParser.senderMatches('PROMO', 'HBL'), isFalse);
+    expect(SmsParser.senderMatches('JazzCash', 'HBL'), isFalse);
+    expect(SmsParser.senderMatches('8558', '80'), isFalse);
+    expect(SmsParser.senderMatches('8080', '80'), isFalse);
+  });
+
+  test('promo with an amount is still ignored', () {
+    expect(
+      SmsParser.shouldIgnoreSms(
+        'Dear customer, get PKR 500 cashback at FOODPANDA. Exclusive offer. T&C apply.',
+      ),
+      isTrue,
+    );
+  });
+
   test('custom ignore phrases match full SMS samples', () {
     const sample =
         'Dear customer, your bill payment of Rs.200 to KE was successful. Ref 99881';

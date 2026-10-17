@@ -129,6 +129,15 @@ class CategoriesRepository {
       await _isar.categoryThresholdModels.put(threshold);
     });
   }
+
+  Future<void> deleteThresholdByCategoryId(String categoryId) async {
+    await _isar.writeTxn(() async {
+      await _isar.categoryThresholdModels
+          .filter()
+          .categoryIdEqualTo(categoryId)
+          .deleteAll();
+    });
+  }
 }
 
 final categoriesRepositoryProvider =

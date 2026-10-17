@@ -59,7 +59,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final confirmed = await etConfirmDelete(
       context,
       title: 'Delete transaction?',
-      message: row.source == TransactionSource.sms
+      message: row.source.fromSms
           ? 'This transaction came from SMS. Delete it permanently?'
           : 'Delete this transaction permanently?',
     );
