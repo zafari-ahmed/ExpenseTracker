@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/design_tokens.dart';
 import '../../../cards/domain/sms_parser.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../providers/transactions_provider.dart';
@@ -114,7 +115,8 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
   Widget build(BuildContext context) {
     final cardsAsync = ref.watch(activeCardsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Transaction')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Add an expense')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

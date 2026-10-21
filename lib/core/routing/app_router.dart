@@ -11,14 +11,17 @@ import '../../features/onboarding/presentation/screens/startup_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/settings/presentation/screens/needs_review_screen.dart';
 import '../../features/settings/presentation/screens/sms_ignore_list_screen.dart';
+import '../../features/settings/presentation/screens/category_thresholds_screen.dart';
 import '../../features/cards/presentation/screens/sms_config_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_entry_screen.dart';
 import 'app_shell.dart';
 
+final initialLocationProvider = Provider<String>((ref) => '/');
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: ref.watch(initialLocationProvider),
     routes: [
       GoRoute(
         path: '/',
@@ -110,6 +113,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/sms-ignore',
         name: 'sms-ignore',
         builder: (context, state) => const SmsIgnoreListScreen(),
+      ),
+      GoRoute(
+        path: '/settings/thresholds',
+        name: 'category-thresholds',
+        builder: (context, state) => const CategoryThresholdsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/thresholds/edit',
+        name: 'category-threshold-edit',
+        builder: (context, state) {
+          final categoryId = state.uri.queryParameters['categoryId'] ?? '';
+          return CategoryThresholdEditScreen(categoryId: categoryId);
+        },
       ),
     ],
   );

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/routing/app_shell.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../cards/data/models/card_model.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../data/models/transaction_model.dart';
 import '../providers/transactions_provider.dart';
@@ -20,6 +24,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
+  bool _showSearch = false;
 
   @override
   void dispose() {
@@ -28,7 +33,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _openEdit(BuildContext context, TransactionModel row) async {
-    await showModalBottomSheet<void>(
+    await runWithHiddenAddFab(ref, () => showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -43,6 +48,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           child: TransactionEditSheet(transaction: row),
         ),
       ),
+    ),
     );
   }
 
@@ -50,26 +56,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     BuildContext context,
     TransactionModel row,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: Text(
-          row.source == TransactionSource.sms
-              ? 'This transaction came from SMS. Delete it permanently?'
-              : 'Delete this transaction permanently?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await etConfirmDelete(
+      context,
+      title: 'Delete transaction?',
+      message: row.source.fromSms
+          ? 'This transaction came from SMS. Delete it permanently?'
+          : 'Delete this transaction permanently?',
     );
 
     if (confirmed != true || !mounted) return;
@@ -87,7 +79,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     var fromDate = filters.fromDate;
     var toDate = filters.toDate;
 
-    await showModalBottomSheet<void>(
+    await runWithHiddenAddFab(ref, () => showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -177,7 +169,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ...cards.map(
                           (c) => DropdownMenuItem(
                             value: c.id,
-                            child: Text(c.cardName),
+                            child: Text(_cardFilterLabel(c)),
                           ),
                         ),
                       ],
@@ -255,6 +247,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           },
         );
       },
+    ),
     );
   }
 
@@ -268,10 +261,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(currencyProvider);
     final txAsync = ref.watch(transactionsListProvider);
     final cardsAsync = ref.watch(activeCardsProvider);
     final filters = ref.watch(transactionFilterProvider);
-    final dateFmt = DateFormat('MMM d');
+
+    final searching = _showSearch;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -279,53 +274,57 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         bottom: false,
         child: Column(
           children: [
-            EtAppHeader(
-              onAvatarTap: () {},
-              onCalendarTap: _openFilters,
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _query = v.trim()),
-                      decoration: const InputDecoration(
-                        hintText: 'Search transactions',
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                    ),
+                    child: searching
+                        ? TextField(
+                            controller: _searchCtrl,
+                            autofocus: true,
+                            onChanged: (v) => setState(() => _query = v.trim()),
+                            decoration: const InputDecoration(
+                              hintText: 'Search merchants',
+                              isDense: true,
+                            ),
+                          )
+                        : Text(
+                            'Transactions',
+                            style: GoogleFonts.archivo(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                  ),
+                  EtGhostIconButton(
+                    icon: searching ? Icons.close : Icons.search,
+                    onTap: () => setState(() {
+                      if (_showSearch) {
+                        _searchCtrl.clear();
+                        _query = '';
+                        _showSearch = false;
+                      } else {
+                        _showSearch = true;
+                      }
+                    }),
                   ),
                   const SizedBox(width: 8),
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Material(
-                        color: _hasActiveFilters
-                            ? AppColors.primaryFixed
-                            : AppColors.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(AppRadii.input),
-                        child: InkWell(
-                          onTap: _openFilters,
-                          borderRadius: BorderRadius.circular(AppRadii.input),
-                          child: const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Icon(
-                              Icons.tune,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
+                      EtGhostIconButton(
+                        icon: Icons.filter_list,
+                        onTap: _openFilters,
                       ),
                       if (_hasActiveFilters)
                         Positioned(
-                          right: -2,
-                          top: -2,
+                          right: -1,
+                          top: -1,
                           child: Container(
-                            width: 10,
-                            height: 10,
+                            width: 8,
+                            height: 8,
                             decoration: const BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
@@ -337,17 +336,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
             cardsAsync.when(
               data: (cards) {
                 final labels = [
                   'All Transactions',
-                  ...cards.map((c) {
-                    final digits = c.lastFourDigits;
-                    return digits == null || digits.isEmpty
-                        ? c.cardName
-                        : '${c.cardName} *$digits';
-                  }),
+                  ...cards.map(_cardFilterLabel),
                 ];
                 var selected = 0;
                 if (filters.cardId != null) {
@@ -418,20 +411,63 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ],
             const SizedBox(height: 8),
+            txAsync.when(
+              data: (rows) {
+                final q = _query.trim();
+                final filtered = q.isEmpty
+                    ? rows
+                    : rows
+                        .where(
+                          (r) =>
+                              r.place.toLowerCase().contains(q.toLowerCase()) ||
+                              r.category
+                                  .toLowerCase()
+                                  .contains(q.toLowerCase()),
+                        )
+                        .toList();
+                final total =
+                    filtered.fold<double>(0, (a, b) => a + b.amount);
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: EtSurfaceCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    radius: 12,
+                    child: Row(
+                      children: [
+                        EtLabelCaps('${filtered.length} EXPENSES'),
+                        const Spacer(),
+                        Text(
+                          EtMoney.format(total),
+                          style: GoogleFonts.archivo(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             Expanded(
               child: txAsync.when(
                 data: (rows) {
-                  final filtered = _query.isEmpty
+                  final q = _query.trim();
+                  final filtered = q.isEmpty
                       ? rows
                       : rows
                           .where(
                             (r) =>
-                                r.place
-                                    .toLowerCase()
-                                    .contains(_query.toLowerCase()) ||
+                                r.place.toLowerCase().contains(q.toLowerCase()) ||
                                 r.category
                                     .toLowerCase()
-                                    .contains(_query.toLowerCase()),
+                                    .contains(q.toLowerCase()),
                           )
                           .toList();
 
@@ -441,10 +477,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                   final grouped = <String, List<TransactionModel>>{};
                   for (final row in filtered) {
-                    final key = DateFormat('EEEE, MMM d')
+                    final key = DateFormat('EEE · d MMM')
                         .format(row.transactionDate)
                         .toUpperCase();
                     grouped.putIfAbsent(key, () => []).add(row);
+                  }
+
+                  final cards =
+                      cardsAsync.valueOrNull ?? const <dynamic>[];
+                  String bankFor(TransactionModel row) {
+                    for (final c in cards) {
+                      if (c.id == row.cardId) {
+                        return c.bankName.isNotEmpty ? c.bankName : c.cardName;
+                      }
+                    }
+                    return 'CARD';
                   }
 
                   final sections = grouped.entries.toList();
@@ -471,39 +518,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    section.key,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                  ),
+                                  child: EtLabelCaps(section.key),
                                 ),
-                                Text(
-                                  '-${EtMoney.format(dayTotal)}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(color: AppColors.primary),
-                                ),
+                                EtLabelCaps(EtMoney.format(dayTotal)),
                               ],
                             ),
                           ),
-                          for (final row in section.value) ...[
-                            EtTransactionTile(
-                              place: row.place,
-                              category: row.category,
-                              amount: row.amount,
-                              subtitle: row.category,
-                              badge: dateFmt.format(row.transactionDate),
-                              showAccent: true,
-                              onTap: () => _openEdit(context, row),
-                              onDelete: () => _deleteTransaction(context, row),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
+                          EtTxnGroup(
+                            children: [
+                              for (final row in section.value)
+                                EtTransactionTile(
+                                  place: row.place,
+                                  category: row.category,
+                                  amount: row.amount,
+                                  subtitle: () {
+                                    final clock =
+                                        EtTxnTime.clock(row.transactionDate);
+                                    return clock == null
+                                        ? '${row.category} · ${bankFor(row)}'
+                                        : '${row.category} · $clock · ${bankFor(row)}';
+                                  }(),
+                                  onTap: () => _openEdit(context, row),
+                                  onDelete: () =>
+                                      _deleteTransaction(context, row),
+                                ),
+                            ],
+                          ),
                         ],
                       );
                     },
@@ -519,6 +559,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
     );
   }
+}
+
+String _cardFilterLabel(CardModel card) {
+  final name = card.cardName.trim();
+  final bank = card.bankName.trim();
+  final title = name.isNotEmpty
+      ? name
+      : (bank.isNotEmpty ? bank : 'Card');
+  final digits = card.lastFourDigits?.trim();
+  if (digits == null || digits.isEmpty) return title;
+  return '$title ····$digits';
 }
 
 class _FilterPill extends StatelessWidget {
@@ -537,17 +588,21 @@ class _FilterPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        height: 36,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: selected ? Colors.white : AppColors.onSurfaceVariant,
             fontWeight: FontWeight.w600,
             fontSize: 12,
+            height: 1.0,
           ),
         ),
       ),
@@ -565,6 +620,8 @@ class _ActiveFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
+      height: 34,
+      alignment: Alignment.center,
       padding: const EdgeInsets.only(left: 12, right: 4),
       decoration: BoxDecoration(
         color: AppColors.primaryFixed,
@@ -572,6 +629,7 @@ class _ActiveFilterChip extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,

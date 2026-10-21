@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/stitch_widgets.dart';
 import '../../data/models/category_model.dart';
 import '../providers/categories_provider.dart';
 
@@ -12,31 +14,42 @@ class CategoriesScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Categories')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Categories')),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showEditor(context, ref),
         child: const Icon(Icons.add),
       ),
       body: categoriesAsync.when(
-        data: (rows) => ListView.builder(
+        data: (rows) => ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 88),
           itemCount: rows.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final row = rows[index];
-            return ListTile(
-              title: Text(row.name),
-              subtitle: Text(row.keywords.join(', ')),
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'edit') {
-                    _showEditor(context, ref, existing: row);
-                  } else if (value == 'delete') {
-                    await ref.read(categoryMutationsProvider).delete(row.id);
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
+            return EtSurfaceCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: EtCategoryBadge(category: row.name),
+                title: Text(row.name),
+                subtitle: Text(
+                  row.keywords.isEmpty
+                      ? 'No keywords'
+                      : row.keywords.join(', '),
+                ),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      _showEditor(context, ref, existing: row);
+                    } else if (value == 'delete') {
+                      await ref.read(categoryMutationsProvider).delete(row.id);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
               ),
             );
           },

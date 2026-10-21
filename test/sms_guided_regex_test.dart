@@ -122,5 +122,37 @@ void main() {
       expect(hblParsed?.amount, 1802.0);
       expect(hblParsed?.place, 'DAS NUMBERI');
     });
+
+    test('uses SMS received time when the body only has a date', () {
+      const sample =
+          'Txn: charged at FOODPANDA for PKR-1,250.00 on 07/Oct/2026.';
+      final suggestion = SmsParser.suggestFromSample(sample);
+      final parsed = SmsParser.parse(
+        smsBody: sample,
+        amountPattern: suggestion.amountPattern,
+        placePattern: suggestion.placePattern,
+        datePattern: suggestion.datePattern,
+        fallbackDate: DateTime(2026, 10, 7, 14, 35, 12),
+        strict: true,
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.transactionDate, DateTime(2026, 10, 7, 14, 35, 12));
+    });
+
+    test('strict parse does not treat a promo SMS as an expense', () {
+      const sample =
+          'Txn: charged at FOODPANDA for PKR-1,250.00 on 07/Oct/2026.';
+      final suggestion = SmsParser.suggestFromSample(sample);
+      final parsed = SmsParser.parse(
+        smsBody:
+            'HBL: Get 20% discount at FOODPANDA. Save PKR 500. Use code SAVE20.',
+        amountPattern: suggestion.amountPattern,
+        placePattern: suggestion.placePattern,
+        datePattern: suggestion.datePattern,
+        fallbackDate: DateTime.now(),
+        strict: true,
+      );
+      expect(parsed, isNull);
+    });
   });
 }

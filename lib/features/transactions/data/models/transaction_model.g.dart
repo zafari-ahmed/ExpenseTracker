@@ -214,10 +214,15 @@ P _transactionModelDeserializeProp<P>(
   }
 }
 
-const _TransactionModelsourceEnumValueMap = {'sms': 0, 'manual': 1};
+const _TransactionModelsourceEnumValueMap = {
+  'sms': 0,
+  'manual': 1,
+  'smsEdited': 2,
+};
 const _TransactionModelsourceValueEnumMap = {
   0: TransactionSource.sms,
   1: TransactionSource.manual,
+  2: TransactionSource.smsEdited,
 };
 
 Id _transactionModelGetId(TransactionModel object) {

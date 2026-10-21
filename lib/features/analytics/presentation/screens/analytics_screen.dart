@@ -21,7 +21,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-  bool _donutView = true;
+  int _tab = 0;
 
   int _defaultBillDay(List<CardModel> cards) {
     if (cards.isEmpty) return 1;
@@ -57,6 +57,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(currencyProvider);
     final txAsync = ref.watch(transactionsListProvider);
     final periodMode =
         ref.watch(spendPeriodModeProvider).valueOrNull ?? SpendPeriodMode.monthly;
@@ -104,80 +105,58 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.margin,
-                0,
+                12,
                 AppSpacing.margin,
                 120,
               ),
               children: [
-                const EtAppHeader(showCalendar: false),
-                EtSurfaceCard(
-                  radius: AppRadii.input,
-                  padding: const EdgeInsets.all(8),
-                  color: AppColors.surfaceContainerLow,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => setState(
-                          () => _month =
-                              DateTime(_month.year, _month.month - 1),
-                        ),
-                        icon: const Icon(Icons.chevron_left),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Analytics',
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            EtLabelCaps(
-                              periodMode == SpendPeriodMode.billingCycle
-                                  ? 'Billing cycle'
-                                  : 'Current period',
-                            ),
-                            Text(
-                              monthLabel,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(color: AppColors.primary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => setState(
-                          () => _month =
-                              DateTime(_month.year, _month.month + 1),
-                        ),
-                        icon: const Icon(Icons.chevron_right),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: Container(
-                    width: 280,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
-                    child: Row(
-                      children: [
-                        _Segment(
-                          label: 'Donut View',
-                          selected: _donutView,
-                          onTap: () => setState(() => _donutView = true),
-                        ),
-                        _Segment(
-                          label: 'Trend View',
-                          selected: !_donutView,
-                          onTap: () => setState(() => _donutView = false),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => setState(
+                              () => _month =
+                                  DateTime(_month.year, _month.month - 1),
+                            ),
+                            icon: const Icon(Icons.chevron_left, size: 18),
+                          ),
+                          EtLabelCaps(monthLabel),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => setState(
+                              () => _month =
+                                  DateTime(_month.year, _month.month + 1),
+                            ),
+                            icon: const Icon(Icons.chevron_right, size: 18),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.section),
-                if (_donutView)
+                const SizedBox(height: 12),
+                EtSegmented(
+                  labels: const ['Categories', 'Trend', 'Merchants'],
+                  selectedIndex: _tab,
+                  onSelected: (i) => setState(() => _tab = i),
+                ),
+                const SizedBox(height: 12),
+                if (_tab == 0)
                   SizedBox(
                     height: 280,
                     child: sections.isEmpty
@@ -230,7 +209,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             ],
                           ),
                   )
-                else
+                else if (_tab == 1)
                   SizedBox(
                     height: 260,
                     child: BarChart(
@@ -300,65 +279,39 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: AppSpacing.section),
-                const EtLabelCaps('Category details'),
-                const SizedBox(height: 12),
-                if (sections.isEmpty)
-                  Text(
-                    periodMode == SpendPeriodMode.billingCycle
-                        ? 'No category spend for this billing cycle.'
-                        : 'No category spend for this month.',
-                  )
-                else
-                  ...sections.map((e) {
-                    final pct = total == 0 ? 0.0 : (e.value / total) * 100;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: EtSurfaceCard(
-                        radius: AppRadii.card,
-                        child: Row(
-                          children: [
-                            EtCategoryBadge(category: e.key),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    e.key,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
-                                  ),
-                                  Text(
-                                    '${pct.toStringAsFixed(0)}% of total spend',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              EtMoney.format(e.value),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: AppColors.primary,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
+                if (_tab == 2) ...[
+                  const EtLabelCaps('Merchants'),
+                  const SizedBox(height: 12),
+                  ..._merchantRows(monthRows),
+                ],
+                if (_tab == 0) ...[
+                  const SizedBox(height: AppSpacing.section),
+                  const EtLabelCaps('Breakdown'),
+                  const SizedBox(height: 12),
+                  if (sections.isEmpty)
+                    Text(
+                      periodMode == SpendPeriodMode.billingCycle
+                          ? 'No category spend for this billing cycle.'
+                          : 'No category spend for this month.',
+                    )
+                  else
+                    EtSurfaceCard(
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < sections.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 12),
+                            _BreakdownRow(
+                              name: sections[i].key,
+                              amount: sections[i].value,
+                              count: monthRows
+                                  .where((r) => r.category == sections[i].key)
+                                  .length,
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                    );
-                  }),
+                    ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 _InsightCard(
                   rows: rows,
@@ -375,6 +328,36 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _merchantRows(List<TransactionModel> rows) {
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final row in rows) {
+      totals[row.place] = (totals[row.place] ?? 0) + row.amount;
+      counts[row.place] = (counts[row.place] ?? 0) + 1;
+    }
+    final items = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (items.isEmpty) {
+      return const [Text('No merchants this period.')];
+    }
+    return [
+      EtSurfaceCard(
+        child: Column(
+          children: [
+            for (var i = 0; i < items.take(8).length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _BreakdownRow(
+                name: items[i].key,
+                amount: items[i].value,
+                count: counts[items[i].key] ?? 0,
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
   }
 
   BarChartGroupData _barGroup(
@@ -407,45 +390,41 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 }
 
-class _Segment extends StatelessWidget {
-  const _Segment({
-    required this.label,
-    required this.selected,
-    required this.onTap,
+class _BreakdownRow extends StatelessWidget {
+  const _BreakdownRow({
+    required this.name,
+    required this.amount,
+    required this.count,
   });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final String name;
+  final double amount;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.surfaceContainerLowest
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: selected
-                  ? AppColors.primary
-                  : AppColors.onSurfaceVariant,
-            ),
+    final avg = count == 0 ? 0.0 : amount / count;
+    return Row(
+      children: [
+        EtCategoryBadge(category: name),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: Theme.of(context).textTheme.titleMedium),
+              EtLabelCaps('$count EXPENSES · AVG ${EtMoney.format(avg)}'),
+            ],
           ),
         ),
-      ),
+        Text(
+          EtMoney.format(amount),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -499,7 +478,6 @@ class _InsightCard extends StatelessWidget {
     }
 
     String message;
-    IconData icon = Icons.insights_outlined;
     final periodWord =
         periodMode == SpendPeriodMode.billingCycle ? 'billing cycle' : 'month';
     if (previous <= 0) {
@@ -508,41 +486,32 @@ class _InsightCard extends StatelessWidget {
     } else {
       final delta = ((current - previous) / previous) * 100;
       if (delta <= 0) {
-        icon = Icons.trending_down;
         message =
             'You spent ${delta.abs().toStringAsFixed(0)}% less this $periodWord compared to the previous period. Keep it up!';
       } else {
-        icon = Icons.trending_up;
         message =
             'Spending is up ${delta.toStringAsFixed(0)}% versus the previous $periodWord. Review top categories below.';
       }
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(AppRadii.summary),
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(height: 12),
-          const Text(
-            'Spending Insight',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-            ),
-          ),
+          const EtLabelCaps('INSIGHT', color: AppColors.soft),
           const SizedBox(height: 8),
           Text(
             message,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              height: 1.4,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              height: 1.45,
             ),
           ),
         ],

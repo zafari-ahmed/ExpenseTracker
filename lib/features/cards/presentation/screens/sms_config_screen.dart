@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../data/models/card_model.dart';
 import '../../data/models/sms_parsing_rule_model.dart';
 import '../../domain/sms_parser.dart';
 import '../providers/cards_provider.dart';
@@ -28,6 +31,8 @@ class _SmsConfigScreenState extends ConsumerState<SmsConfigScreen> {
   String _previewOutput = '';
   String _guideStatus = '';
   SmsParsingRuleModel? _existing;
+  CardModel? _card;
+  bool _fetchingInbox = false;
 
   @override
   void initState() {
@@ -51,41 +56,123 @@ class _SmsConfigScreenState extends ConsumerState<SmsConfigScreen> {
   }
 
   Future<void> _loadExisting() async {
-    final row = await ref.read(parsingRuleByCardProvider(widget.cardId).future);
-    if (row == null || !mounted) return;
-
-    setState(() {
-      _existing = row;
-      _sampleCtrl.text = row.sampleMessage;
-      _amountPatternCtrl.text = row.amountPattern;
-      _placePatternCtrl.text = row.placePattern;
-      _datePatternCtrl.text = row.datePattern ?? '';
-      if (row.excludeKeywords.isNotEmpty) {
-        _excludeCtrl.text = row.excludeKeywords.join(', ');
-      }
-      _previewCtrl.text = row.sampleMessage;
-    });
-
-    // Prefill amount/place/date fields by parsing the saved sample.
-    if (row.sampleMessage.trim().isNotEmpty) {
-      final parsed = SmsParser.parse(
-        smsBody: row.sampleMessage,
-        amountPattern: row.amountPattern,
-        placePattern: row.placePattern,
-        datePattern: row.datePattern,
-        fallbackDate: DateTime.now(),
-      );
-      if (parsed != null && mounted) {
-        setState(() {
-          _amountValueCtrl.text = parsed.amount.toString();
-          _placeValueCtrl.text = parsed.place;
-          _dateValueCtrl.text =
-              '${parsed.transactionDate.day.toString().padLeft(2, '0')}/'
-              '${parsed.transactionDate.month.toString().padLeft(2, '0')}/'
-              '${parsed.transactionDate.year}';
-        });
+    final cards = await ref.read(cardsListProvider.future);
+    CardModel? card;
+    for (final item in cards) {
+      if (item.id == widget.cardId) {
+        card = item;
+        break;
       }
     }
+    final row = await ref.read(parsingRuleByCardProvider(widget.cardId).future);
+    if (!mounted) return;
+
+    setState(() {
+      _card = card;
+      if (row != null) {
+        _existing = row;
+        _sampleCtrl.text = row.sampleMessage;
+        _amountPatternCtrl.text = row.amountPattern;
+        _placePatternCtrl.text = row.placePattern;
+        _datePatternCtrl.text = row.datePattern ?? '';
+        if (row.excludeKeywords.isNotEmpty) {
+          _excludeCtrl.text = row.excludeKeywords.join(', ');
+        }
+        _previewCtrl.text = row.sampleMessage;
+      }
+    });
+
+    await _fetchLatestInboxSms();
+  }
+
+  Future<void> _fetchLatestInboxSms() async {
+    final card = _card;
+    final sender = card?.smsSenderId.trim() ?? '';
+    if (sender.isEmpty) {
+      if (_sampleCtrl.text.trim().isEmpty) {
+        setState(() {
+          _guideStatus =
+              'Set this card’s SMS sender ID first, then we can pull the latest inbox message.';
+        });
+      }
+      _applyParsedValues(_sampleCtrl.text);
+      return;
+    }
+
+    setState(() {
+      _fetchingInbox = true;
+      _guideStatus = 'Looking up the latest SMS from $sender…';
+    });
+
+    final latest = await ref.read(smsListenerServiceProvider).latestInboxSmsForSender(
+          senderId: sender,
+          lastFourDigits: card?.lastFourDigits,
+        );
+
+    if (!mounted) return;
+
+    setState(() => _fetchingInbox = false);
+
+    if (latest == null) {
+      setState(() {
+        _guideStatus = _sampleCtrl.text.trim().isEmpty
+            ? 'No inbox SMS found from $sender. Paste a sample below, or allow SMS permission and try again.'
+            : 'Could not fetch a newer inbox SMS from $sender. Using the saved sample.';
+      });
+      _applyParsedValues(_sampleCtrl.text);
+      return;
+    }
+
+    final stamp = DateFormat('d MMM, HH:mm').format(latest.receivedAt);
+    setState(() {
+      _sampleCtrl.text = latest.body;
+      _previewCtrl.text = latest.body;
+      _guideStatus =
+          'We fetched the most recent SMS from $sender ($stamp) for you to configure.';
+    });
+    _fillFromFetchedSample(latest.body);
+  }
+
+  void _fillFromFetchedSample(String body) {
+    final suggestion = SmsParser.suggestFromSample(body);
+    if (_amountPatternCtrl.text.trim().isEmpty) {
+      _amountPatternCtrl.text = suggestion.amountPattern;
+    }
+    if (_placePatternCtrl.text.trim().isEmpty) {
+      _placePatternCtrl.text = suggestion.placePattern;
+    }
+    if (_datePatternCtrl.text.trim().isEmpty &&
+        (suggestion.datePattern ?? '').isNotEmpty) {
+      _datePatternCtrl.text = suggestion.datePattern ?? '';
+    }
+    _applyParsedValues(body);
+    _preview();
+  }
+
+  void _applyParsedValues(String body) {
+    if (body.trim().isEmpty) return;
+    final parsed = SmsParser.parse(
+      smsBody: body,
+      amountPattern: _amountPatternCtrl.text.trim().isEmpty
+          ? SmsParser.suggestFromSample(body).amountPattern
+          : _amountPatternCtrl.text,
+      placePattern: _placePatternCtrl.text.trim().isEmpty
+          ? SmsParser.suggestFromSample(body).placePattern
+          : _placePatternCtrl.text,
+      datePattern: _datePatternCtrl.text.trim().isEmpty
+          ? SmsParser.suggestFromSample(body).datePattern
+          : _datePatternCtrl.text,
+      fallbackDate: DateTime.now(),
+    );
+    if (parsed == null || !mounted) return;
+    setState(() {
+      _amountValueCtrl.text = parsed.amount.toString();
+      _placeValueCtrl.text = parsed.place;
+      _dateValueCtrl.text =
+          '${parsed.transactionDate.day.toString().padLeft(2, '0')}/'
+          '${parsed.transactionDate.month.toString().padLeft(2, '0')}/'
+          '${parsed.transactionDate.year}';
+    });
   }
 
   void _generateFromValues() {
@@ -216,26 +303,47 @@ class _SmsConfigScreenState extends ConsumerState<SmsConfigScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Configure SMS Format'),
+        title: const Text('How this sender is read'),
         backgroundColor: AppColors.background,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           Text(
-            'No regex needed. Paste one real bank SMS, then copy the amount, place, and date from that same message into the boxes below.',
+            'If this card has an SMS sender ID, we load the latest inbox message automatically. You can still paste another SMS.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _sampleCtrl,
             maxLines: 6,
-            decoration: const InputDecoration(
+            enabled: !_fetchingInbox,
+            decoration: InputDecoration(
               labelText: '1. Sample SMS message',
-              hintText: 'Paste the full bank SMS here exactly as received',
-              helperText: 'Use one real expense SMS for this card / sender.',
+              hintText: _fetchingInbox
+                  ? 'Fetching the latest inbox SMS…'
+                  : 'Paste the full bank SMS here exactly as received',
+              helperText: _card?.smsSenderId.trim().isNotEmpty == true
+                  ? 'Sender: ${_card!.smsSenderId}'
+                  : 'Use one real expense SMS for this card / sender.',
               alignLabelWithHint: true,
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _fetchingInbox ? null : _fetchLatestInboxSms,
+            icon: _fetchingInbox
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sms_outlined),
+            label: Text(
+              _fetchingInbox
+                  ? 'Fetching latest SMS…'
+                  : 'Fetch latest SMS from this sender',
             ),
           ),
           const SizedBox(height: 20),

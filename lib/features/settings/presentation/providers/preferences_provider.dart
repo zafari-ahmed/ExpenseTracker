@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_currency.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/utils/period_range.dart';
 
@@ -8,12 +9,14 @@ class NotificationPrefs {
     required this.billReminderEnabled,
     required this.thresholdAlertsEnabled,
     required this.summaryPushEnabled,
+    required this.expenseAddedNotificationsEnabled,
     required this.billLeadDays,
   });
 
   final bool billReminderEnabled;
   final bool thresholdAlertsEnabled;
   final bool summaryPushEnabled;
+  final bool expenseAddedNotificationsEnabled;
   final int billLeadDays;
 }
 
@@ -23,6 +26,8 @@ final notificationPrefsProvider = FutureProvider<NotificationPrefs>((ref) async 
     billReminderEnabled: await prefs.billReminderEnabled(),
     thresholdAlertsEnabled: await prefs.thresholdAlertsEnabled(),
     summaryPushEnabled: await prefs.summaryPushEnabled(),
+    expenseAddedNotificationsEnabled:
+        await prefs.expenseAddedNotificationsEnabled(),
     billLeadDays: await prefs.billLeadDays(),
   );
 });
@@ -30,4 +35,11 @@ final notificationPrefsProvider = FutureProvider<NotificationPrefs>((ref) async 
 final spendPeriodModeProvider = FutureProvider<SpendPeriodMode>((ref) async {
   final prefs = ref.watch(appPreferencesServiceProvider);
   return prefs.spendPeriodMode();
+});
+
+final currencyProvider = FutureProvider<AppCurrency>((ref) async {
+  final prefs = ref.watch(appPreferencesServiceProvider);
+  final currency = AppCurrency.byCode(await prefs.currencyCode());
+  CurrencyStore.current = currency;
+  return currency;
 });

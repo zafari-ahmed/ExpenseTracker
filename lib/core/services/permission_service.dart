@@ -1,6 +1,11 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+final smsGrantedProvider = FutureProvider<bool>((ref) async {
+  return PermissionService().isSmsGranted();
+});
 
 class PermissionRequestResult {
   const PermissionRequestResult({
@@ -20,6 +25,12 @@ class PermissionService {
   Future<bool> isSmsGranted() async {
     if (!Platform.isAndroid) return false;
     return Permission.sms.isGranted;
+  }
+
+  Future<bool> requestCamera() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.camera.request();
+    return status.isGranted;
   }
 
   Future<PermissionRequestResult> requestAppPermissions() async {

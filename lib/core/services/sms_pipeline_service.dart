@@ -10,6 +10,7 @@ import '../../features/categories/data/repositories/categories_repository.dart';
 import '../../features/transactions/data/models/transaction_model.dart';
 import '../../features/transactions/data/repositories/transactions_repository.dart';
 import 'app_preferences_service.dart';
+import 'sms_process_result.dart';
 
 class SmsPipelineService {
   SmsPipelineService({
@@ -39,43 +40,43 @@ class SmsPipelineService {
     return SmsParser.effectiveDefaultIgnorePhrases(disabledPhrases: disabled);
   }
 
-  /// Process one incoming / inbox SMS. Returns true if a transaction or review
-  /// item was created.
-  Future<bool> processIncomingSms({
+  /// Process one incoming / inbox SMS.
+  Future<SmsProcessResult> processIncomingSms({
     required String senderId,
     required String body,
     DateTime? receivedAt,
   }) async {
-    if (!supportsSmsReading) return false;
+    if (!supportsSmsReading) return const SmsProcessResult.none();
     final trimmedBody = body.trim();
-    if (trimmedBody.isEmpty) return false;
+    if (trimmedBody.isEmpty) return const SmsProcessResult.none();
 
     final customIgnore = await _customIgnoreList();
     final activeDefaults = await _activeDefaultIgnoreList();
 
-    // Drop OTP / credit / user-ignored alerts before any card matching.
     if (SmsParser.shouldIgnoreSms(
       trimmedBody,
       extraIgnorePhrases: customIgnore,
       enabledDefaultIgnorePhrases: activeDefaults,
     )) {
-      return false;
+      return const SmsProcessResult.none();
     }
 
-    // Skip exact duplicates already stored as transactions.
     if (await _transactionsRepository.existsByRawSmsBody(trimmedBody)) {
-      return false;
+      return const SmsProcessResult.none();
     }
 
     final cards = await _cardsRepository.getCards(activeOnly: true);
-    if (cards.isEmpty) return false;
+    if (cards.isEmpty) return const SmsProcessResult.none();
 
-    CardModel? card = _matchCard(cards, senderId: senderId, body: trimmedBody);
-    card ??= await _matchCardByRule(cards, trimmedBody, receivedAt);
-    if (card == null) return false;
+    final card = _matchCard(cards, senderId: senderId);
+    if (card == null) return const SmsProcessResult.none();
 
-    final rule = await _ruleForCard(card, sampleBody: trimmedBody);
-    await processSms(
+    final rule = await _cardsRepository.getRuleForCard(card.id);
+    if (rule == null || rule.sampleMessage.trim().isEmpty) {
+      return const SmsProcessResult.none();
+    }
+
+    return processSms(
       card: card,
       rule: rule,
       senderId: senderId,
@@ -84,10 +85,9 @@ class SmsPipelineService {
       customIgnorePhrases: customIgnore,
       activeDefaultIgnorePhrases: activeDefaults,
     );
-    return true;
   }
 
-  Future<void> processSms({
+  Future<SmsProcessResult> processSms({
     required CardModel card,
     required SmsParsingRuleModel rule,
     required String senderId,
@@ -105,7 +105,7 @@ class SmsPipelineService {
       extraIgnorePhrases: customIgnore,
       enabledDefaultIgnorePhrases: activeDefaults,
     )) {
-      return;
+      return const SmsProcessResult.none();
     }
 
     final lowerBody = body.toLowerCase();
@@ -117,7 +117,19 @@ class SmsPipelineService {
     if (excludes.any(
       (e) => e.trim().isNotEmpty && lowerBody.contains(e.toLowerCase()),
     )) {
-      return;
+      return const SmsProcessResult.none();
+    }
+
+    final sample = rule.sampleMessage.trim();
+    if (sample.isEmpty) {
+      return const SmsProcessResult.none();
+    }
+    if (!SmsParser.matchesConfiguredSample(body, sample)) {
+      return const SmsProcessResult.none();
+    }
+    if (!SmsParser.hasStrongExpenseSignal(lowerBody) &&
+        !SmsParser.hasExpenseSignal(lowerBody)) {
+      return const SmsProcessResult.none();
     }
 
     final parsed = SmsParser.parse(
@@ -126,9 +138,13 @@ class SmsPipelineService {
       placePattern: rule.placePattern,
       datePattern: rule.datePattern,
       fallbackDate: receivedAt ?? DateTime.now(),
+      strict: true,
     );
 
     if (parsed == null) {
+      if (!SmsParser.hasStrongExpenseSignal(lowerBody)) {
+        return const SmsProcessResult.none();
+      }
       await _transactionsRepository.addNeedsReview(
         cardId: card.id,
         senderId: senderId,
@@ -136,17 +152,16 @@ class SmsPipelineService {
         parseError: 'Could not extract amount/place/date',
         receivedAt: receivedAt,
       );
-      return;
+      return const SmsProcessResult.needsReview();
     }
 
-    // Extra dedupe: same card + amount + place + day.
     if (await _transactionsRepository.existsSimilarSmsTransaction(
       cardId: card.id,
       amount: parsed.amount,
       place: parsed.place,
       transactionDate: parsed.transactionDate,
     )) {
-      return;
+      return const SmsProcessResult.none();
     }
 
     final category =
@@ -164,105 +179,23 @@ class SmsPipelineService {
       ..createdAt = DateTime.now()
       ..source = TransactionSource.sms;
     await _transactionsRepository.upsertTransaction(tx);
+
+    return SmsProcessResult.expenseAdded(
+      transaction: tx,
+      cardName: card.cardName,
+    );
   }
 
   CardModel? _matchCard(
     List<CardModel> cards, {
     required String senderId,
-    required String body,
   }) {
-    final addr = _normalizeSender(senderId);
-    final bodyLower = body.toLowerCase();
-
     final senderMatches = cards.where((card) {
-      final configured = _normalizeSender(card.smsSenderId);
-      if (configured.isEmpty || addr.isEmpty) return false;
-      return addr == configured ||
-          addr.contains(configured) ||
-          configured.contains(addr);
+      return SmsParser.senderMatches(senderId, card.smsSenderId);
     }).toList();
 
-    if (senderMatches.isEmpty) {
-      // Fallback: last-4 digits mentioned in SMS body.
-      final byDigits = cards.where((card) {
-        final digits = card.lastFourDigits?.trim();
-        if (digits == null || digits.length < 4) return false;
-        return bodyLower.contains(digits.toLowerCase());
-      }).toList();
-      if (byDigits.length == 1) return byDigits.first;
-      return null;
-    }
-
+    if (senderMatches.isEmpty) return null;
     if (senderMatches.length == 1) return senderMatches.first;
-
-    // Same bank sender for multiple cards → disambiguate by last 4.
-    for (final card in senderMatches) {
-      final digits = card.lastFourDigits?.trim();
-      if (digits != null &&
-          digits.length >= 4 &&
-          bodyLower.contains(digits.toLowerCase())) {
-        return card;
-      }
-    }
     return senderMatches.first;
-  }
-
-  /// Fallback when sender ID / last-4 matching fails:
-  /// try each card's saved regex rule and use the only rule that parses.
-  Future<CardModel?> _matchCardByRule(
-    List<CardModel> cards,
-    String body,
-    DateTime? receivedAt,
-  ) async {
-    CardModel? matched;
-    var matchCount = 0;
-    final fallbackDate = receivedAt ?? DateTime.now();
-
-    for (final card in cards) {
-      final rule = await _cardsRepository.getRuleForCard(card.id);
-      if (rule == null) continue;
-
-      final parsed = SmsParser.parse(
-        smsBody: body,
-        amountPattern: rule.amountPattern,
-        placePattern: rule.placePattern,
-        datePattern: rule.datePattern,
-        fallbackDate: fallbackDate,
-      );
-      if (parsed == null) continue;
-
-      matchCount++;
-      matched = card;
-      if (matchCount > 1) {
-        // Ambiguous match: don't guess the wrong card.
-        return null;
-      }
-    }
-
-    return matchCount == 1 ? matched : null;
-  }
-
-  Future<SmsParsingRuleModel> _ruleForCard(
-    CardModel card, {
-    required String sampleBody,
-  }) async {
-    final existing = await _cardsRepository.getRuleForCard(card.id);
-    if (existing != null) return existing;
-
-    final suggestion = SmsParser.suggestFromSample(sampleBody);
-    final rule = SmsParsingRuleModel()
-      ..id = _uuid.v4()
-      ..cardId = card.id
-      ..sampleMessage = sampleBody
-      ..amountPattern = suggestion.amountPattern
-      ..placePattern = suggestion.placePattern
-      ..datePattern = suggestion.datePattern
-      ..excludeKeywords = List<String>.from(SmsParser.defaultIgnorePhrases);
-    await _cardsRepository.upsertParsingRule(rule);
-    return rule;
-  }
-
-  static String _normalizeSender(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }

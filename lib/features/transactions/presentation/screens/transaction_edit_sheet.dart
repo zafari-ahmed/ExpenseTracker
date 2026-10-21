@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_currency.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../cards/data/models/card_model.dart';
+import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
+import '../../../settings/presentation/providers/preferences_provider.dart';
 import '../../data/models/transaction_model.dart';
 import '../providers/transactions_provider.dart';
 
@@ -19,16 +26,17 @@ class TransactionEditSheet extends ConsumerStatefulWidget {
 
 class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   late final TextEditingController _placeCtrl;
+  late final TextEditingController _amountCtrl;
   late final TextEditingController _descriptionCtrl;
   String? _category;
   bool _saving = false;
-  bool _smsExpanded = false;
   bool _rememberForFuture = true;
 
   @override
   void initState() {
     super.initState();
     _placeCtrl = TextEditingController(text: widget.transaction.place);
+    _amountCtrl = TextEditingController(text: _formatAmountInput(widget.transaction.amount));
     _descriptionCtrl =
         TextEditingController(text: widget.transaction.description);
     _category = widget.transaction.category;
@@ -38,8 +46,22 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   @override
   void dispose() {
     _placeCtrl.dispose();
+    _amountCtrl.dispose();
     _descriptionCtrl.dispose();
     super.dispose();
+  }
+
+  String _formatAmountInput(double amount) {
+    if (amount == amount.roundToDouble()) {
+      return amount.round().toString();
+    }
+    return amount.toString();
+  }
+
+  double? _parseAmount(String raw) {
+    final cleaned = raw.replaceAll(',', '').replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) return null;
+    return double.tryParse(cleaned);
   }
 
   bool get _hasSms {
@@ -48,20 +70,23 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
   }
 
   Future<void> _save() async {
-    if (_saving) {
-      return;
-    }
+    if (_saving) return;
     setState(() => _saving = true);
 
     final place = _placeCtrl.text.trim();
     final description = _descriptionCtrl.text.trim();
     final category = _category ?? 'Uncategorized';
+    final amount = _parseAmount(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
     final transactionId = widget.transaction.id;
 
-    // Close sheet first to avoid navigator lock during provider refresh.
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
+    if (mounted) Navigator.of(context).pop();
 
     await Future<void>.delayed(Duration.zero);
     await ref.read(transactionMutationsProvider).updateDetails(
@@ -69,178 +94,325 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
           place: place,
           description: description,
           category: category,
+          amount: amount,
           rememberForFuture: _rememberForFuture,
         );
   }
 
-  Future<void> _showFullSms() async {
-    final body = widget.transaction.rawSmsBody.trim();
-    if (body.isEmpty || !mounted) return;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Original SMS'),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            body,
-            style: const TextStyle(height: 1.4),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: body));
-              if (dialogContext.mounted) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('SMS copied')),
-                );
-              }
-            },
-            child: const Text('Copy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+  Future<void> _delete() async {
+    final confirmed = await etConfirmDelete(
+      context,
+      title: 'Delete transaction?',
+      message: 'This permanently deletes the expense.',
     );
+    if (confirmed != true || !mounted) return;
+    final id = widget.transaction.id;
+    Navigator.of(context).pop();
+    await ref.read(transactionMutationsProvider).delete(id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final money = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
+    ref.watch(currencyProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final cards = ref.watch(cardsListProvider).valueOrNull ?? const <CardModel>[];
     final smsBody = widget.transaction.rawSmsBody.trim();
+    CardModel? matched;
+    for (final c in cards) {
+      if (c.id == widget.transaction.cardId) matched = c;
+    }
+    final account = matched == null
+        ? 'Account'
+        : '${matched.bankName} ····${matched.lastFourDigits ?? '----'}';
+    final dateFormat = EtTxnTime.hasClock(widget.transaction.transactionDate)
+        ? DateFormat('d MMM yyyy · HH:mm')
+        : DateFormat('d MMM yyyy');
+    final date = dateFormat.format(widget.transaction.transactionDate).toUpperCase();
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Edit Transaction',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            Text('Amount (locked): ${money.format(widget.transaction.amount)}'),
-            if (_hasSms) ...[
+    return Material(
+      color: AppColors.background,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: _delete,
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ],
+              ),
+              EtCategoryBadge(
+                category: widget.transaction.category,
+                size: 44,
+                iconSize: 24,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    CurrencyStore.current.symbol.trim(),
+                    style: GoogleFonts.archivo(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: TextField(
+                      controller: _amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: GoogleFonts.archivo(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2,
+                        height: 1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: '0',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: AppColors.soft,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _placeCtrl,
+                      style: GoogleFonts.archivo(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Merchant',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: AppColors.soft,
+                  ),
+                ],
+              ),
+              EtLabelCaps(date),
+              const SizedBox(height: 14),
+              EtSurfaceCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _MetaRow(
+                      label: 'CATEGORY',
+                      child: categoriesAsync.when(
+                        data: (cats) {
+                          final names = cats.map((c) => c.name).toList();
+                          if (_category != null &&
+                              _category!.isNotEmpty &&
+                              !names.contains(_category)) {
+                            names.insert(0, _category!);
+                          }
+                          return DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: names.contains(_category) ? _category : null,
+                              isDense: true,
+                              items: names
+                                  .map(
+                                    (name) => DropdownMenuItem(
+                                      value: name,
+                                      child: Text(name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _category = value),
+                            ),
+                          );
+                        },
+                        error: (e, _) => Text('$e'),
+                        loading: () => const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    _MetaRow(
+                      label: 'ACCOUNT',
+                      child: Text(
+                        account,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    _MetaRow(
+                      label: 'SOURCE',
+                      child: Text(
+                        widget.transaction.source == TransactionSource.smsEdited
+                            ? 'SMS · edited'
+                            : widget.transaction.source == TransactionSource.sms
+                                ? 'SMS · auto'
+                                : 'Manual',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
-              Material(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
+              if (_hasSms)
+                EtSurfaceCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(
-                            Icons.sms_outlined,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              widget.transaction.source == TransactionSource.sms
-                                  ? 'Original bank SMS'
-                                  : 'Linked SMS / note',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                          const EtLabelCaps('SOURCE MESSAGE'),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
                             ),
-                          ),
-                          TextButton(
-                            onPressed: _showFullSms,
-                            child: const Text('View full'),
+                            decoration: BoxDecoration(
+                              color: widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? AppColors.amberTint
+                                  : AppColors.greenTint,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: EtLabelCaps(
+                              widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? 'EDITED'
+                                  : 'AUTO-PARSED',
+                              color: widget.transaction.source ==
+                                      TransactionSource.smsEdited
+                                  ? AppColors.warning
+                                  : AppColors.success,
+                            ),
                           ),
                         ],
                       ),
-                      Text(
-                        _smsExpanded
-                            ? smsBody
-                            : (smsBody.length > 140
-                                ? '${smsBody.substring(0, 140)}…'
-                                : smsBody),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              height: 1.35,
-                            ),
-                      ),
-                      if (smsBody.length > 140)
-                        TextButton(
-                          onPressed: () =>
-                              setState(() => _smsExpanded = !_smsExpanded),
-                          child: Text(_smsExpanded ? 'Show less' : 'Show more'),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        child: SelectableText(
+                          smsBody,
+                          style: GoogleFonts.ibmPlexMono(
+                            fontSize: 12,
+                            height: 1.65,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          if (widget.transaction.cardId.isEmpty) return;
+                          Navigator.pop(context);
+                          context.push(
+                            '/cards/sms-config?cardId=${widget.transaction.cardId}',
+                          );
+                        },
+                        child: EtLabelCaps(
+                          'FIX HOW THIS SENDER IS READ →',
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ],
                   ),
+                )
+              else
+                TextField(
+                  controller: _descriptionCtrl,
+                  decoration: const InputDecoration(labelText: 'Note'),
+                ),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _rememberForFuture,
+                onChanged: (value) =>
+                    setState(() => _rememberForFuture = value ?? true),
+                title: const Text('Remember for future transactions'),
+                subtitle: Text(
+                  _placeCtrl.text.trim().isEmpty
+                      ? 'Saves this place → category for new SMS'
+                      : 'Future "${_placeCtrl.text.trim()}" SMS go to ${_category ?? 'category'}',
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'Saving...' : 'Save changes'),
                 ),
               ),
             ],
-            const SizedBox(height: 8),
-            TextField(
-              controller: _placeCtrl,
-              decoration: const InputDecoration(labelText: 'Place'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _descriptionCtrl,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            const SizedBox(height: 8),
-            categoriesAsync.when(
-              data: (cats) {
-                final names = cats.map((c) => c.name).toList();
-                if (_category != null &&
-                    _category!.isNotEmpty &&
-                    !names.contains(_category)) {
-                  names.insert(0, _category!);
-                }
-                return DropdownButtonFormField<String>(
-                  key: ValueKey(_category),
-                  initialValue: _category,
-                  items: names
-                      .map(
-                        (name) =>
-                            DropdownMenuItem(value: name, child: Text(name)),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => _category = value),
-                  decoration: const InputDecoration(labelText: 'Category'),
-                );
-              },
-              error: (e, s) => Text('Error: $e'),
-              loading: () => const LinearProgressIndicator(),
-            ),
-            const SizedBox(height: 8),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _rememberForFuture,
-              onChanged: (value) =>
-                  setState(() => _rememberForFuture = value ?? true),
-              title: const Text('Remember for future transactions'),
-              subtitle: Text(
-                _placeCtrl.text.trim().isEmpty
-                    ? 'Saves this place → category for new SMS'
-                    : 'Future "${_placeCtrl.text.trim()}" SMS go to ${_category ?? 'category'}',
-              ),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Saving...' : 'Save'),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          EtLabelCaps(label),
+          const Spacer(),
+          Flexible(child: child),
+        ],
       ),
     );
   }

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/app_router.dart';
+import 'core/services/service_providers.dart';
 import 'core/services/sms_listener_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/settings/presentation/providers/preferences_provider.dart';
 
 class ExpenseTrackerApp extends ConsumerStatefulWidget {
   const ExpenseTrackerApp({super.key});
@@ -35,6 +37,8 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     if (!Platform.isAndroid) return;
     try {
       await ref.read(smsBootstrapProvider.future);
+      final dispatcher = await ref.read(notificationDispatcherProvider.future);
+      await dispatcher.runBillReminderChecks();
     } catch (e) {
       debugPrint('SMS bootstrap failed: $e');
     }
@@ -44,23 +48,26 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       ref.read(smsListenerServiceProvider).syncInbox();
+      ref.read(notificationDispatcherProvider.future).then(
+            (dispatcher) => dispatcher.runBillReminderChecks(),
+          );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeProvider);
     // Keep SMS bootstrap alive while app runs.
     ref.watch(smsBootstrapProvider);
     ref.watch(smsSyncTickProvider);
+    ref.watch(currencyProvider);
 
     return MaterialApp.router(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
+      darkTheme: AppTheme.light(),
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

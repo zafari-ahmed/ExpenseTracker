@@ -3,24 +3,42 @@ import 'dart:io';
 import 'package:another_telephony/telephony.dart' as telephony;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar_community/isar.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../features/cards/data/models/card_model.dart';
-import '../../features/cards/data/models/sms_parsing_rule_model.dart';
-import '../../features/cards/data/repositories/cards_repository.dart';
-import '../../features/categories/data/models/category_model.dart';
-import '../../features/categories/data/models/category_threshold_model.dart';
-import '../../features/categories/data/repositories/categories_repository.dart';
-import '../../features/transactions/data/models/needs_review_item_model.dart';
-import '../../features/transactions/data/models/transaction_model.dart';
-import '../../features/transactions/data/repositories/transactions_repository.dart';
+import '../../features/cards/domain/sms_parser.dart';
 import '../../features/transactions/presentation/providers/transactions_provider.dart';
 import '../database/isar_instance.dart';
-import 'app_preferences_service.dart';
+import 'notification_runtime.dart';
 import 'service_providers.dart';
-import 'sms_pipeline_service.dart';
+import 'sms_process_result.dart';
+
+class LatestSenderSms {
+  const LatestSenderSms({
+    required this.senderId,
+    required this.body,
+    required this.receivedAt,
+  });
+
+  final String senderId;
+  final String body;
+  final DateTime receivedAt;
+}
+
+class SmsSyncResult {
+  const SmsSyncResult({
+    this.createdCount = 0,
+    this.from,
+    this.to,
+    this.granted = true,
+    this.skipped = false,
+  });
+
+  final int createdCount;
+  final DateTime? from;
+  final DateTime? to;
+  final bool granted;
+  final bool skipped;
+}
 
 /// Bumps whenever SMS sync creates/updates data so UI can refresh.
 final smsSyncTickProvider = StateProvider<int>((ref) => 0);
@@ -37,39 +55,16 @@ Future<void> onBackgroundSms(telephony.SmsMessage message) async {
         ? DateTime.fromMillisecondsSinceEpoch(message.date!)
         : DateTime.now();
 
-    final pipeline = await _standalonePipeline();
-    await pipeline.processIncomingSms(
+    final stack = await createStandaloneNotificationStack();
+    final result = await stack.pipeline.processIncomingSms(
       senderId: address,
       body: body,
       receivedAt: receivedAt,
     );
+    await handleSmsProcessResult(result);
   } catch (e, st) {
     debugPrint('Background SMS handling failed: $e\n$st');
   }
-}
-
-Future<SmsPipelineService> _standalonePipeline() async {
-  final dir = await getApplicationDocumentsDirectory();
-  final isar = Isar.getInstance('expense_tracker_db') ??
-      await Isar.open(
-        <CollectionSchema<dynamic>>[
-          CardModelSchema,
-          SmsParsingRuleModelSchema,
-          TransactionModelSchema,
-          NeedsReviewItemModelSchema,
-          CategoryModelSchema,
-          CategoryThresholdModelSchema,
-        ],
-        directory: dir.path,
-        name: 'expense_tracker_db',
-      );
-
-  return SmsPipelineService(
-    cardsRepository: CardsRepository(isar),
-    transactionsRepository: TransactionsRepository(isar),
-    categoriesRepository: CategoriesRepository(isar),
-    preferencesService: AppPreferencesService(),
-  );
 }
 
 class SmsListenerService {
@@ -114,33 +109,52 @@ class SmsListenerService {
         : DateTime.now();
 
     final pipeline = await _ref.read(smsPipelineServiceProvider.future);
-    final created = await pipeline.processIncomingSms(
+    final result = await pipeline.processIncomingSms(
       senderId: address,
       body: body,
       receivedAt: receivedAt,
     );
-    if (created) {
+    if (result.created) {
       _invalidateUi();
+    }
+    if (result.kind == SmsProcessKind.expenseAdded && result.transaction != null) {
+      final dispatcher = await _ref.read(notificationDispatcherProvider.future);
+      await dispatcher.onExpenseAddedFromSms(
+        transaction: result.transaction!,
+        cardName: result.cardName ?? 'Card',
+      );
     }
   }
 
-  /// Scan device inbox for card SMS since last successful sync (or last 14 days).
-  Future<int> syncInbox({bool forceFullWindow = false}) async {
-    if (!Platform.isAndroid || _scanning) return 0;
+  /// Scan device inbox for card SMS since last successful sync
+  /// (or the current calendar month on a full / first sync).
+  Future<SmsSyncResult> syncInbox({bool forceFullWindow = false}) async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month);
+    if (!Platform.isAndroid) {
+      return SmsSyncResult(from: monthStart, to: now, skipped: true);
+    }
+    if (_scanning) {
+      return SmsSyncResult(from: monthStart, to: now, skipped: true);
+    }
     _scanning = true;
     var createdCount = 0;
+    DateTime? from;
+    var to = now;
 
     try {
       final granted =
           await _ref.read(permissionServiceProvider).isSmsGranted();
-      if (!granted) return 0;
+      if (!granted) {
+        return SmsSyncResult(from: monthStart, to: now, granted: false);
+      }
 
       final prefs = _ref.read(appPreferencesServiceProvider);
       final lastScan = await prefs.lastSmsScanMillis();
-      final now = DateTime.now();
-      final sinceMillis = forceFullWindow || lastScan <= 0
-          ? now.subtract(const Duration(days: 14)).millisecondsSinceEpoch
-          : lastScan;
+      from = forceFullWindow || lastScan <= 0
+          ? monthStart
+          : DateTime.fromMillisecondsSinceEpoch(lastScan);
+      final sinceMillis = from.millisecondsSinceEpoch;
 
       final messages = await _telephony.getInboxSms(
         columns: [
@@ -171,14 +185,24 @@ class SmsListenerService {
             ? DateTime.fromMillisecondsSinceEpoch(message.date!)
             : now;
 
-        final created = await pipeline.processIncomingSms(
+        final result = await pipeline.processIncomingSms(
           senderId: address,
           body: body,
           receivedAt: receivedAt,
         );
-        if (created) createdCount++;
+        if (result.created) createdCount++;
+        if (result.kind == SmsProcessKind.expenseAdded &&
+            result.transaction != null) {
+          final dispatcher =
+              await _ref.read(notificationDispatcherProvider.future);
+          await dispatcher.onExpenseAddedFromSms(
+            transaction: result.transaction!,
+            cardName: result.cardName ?? 'Card',
+          );
+        }
       }
 
+      to = now;
       await prefs.setLastSmsScanMillis(now.millisecondsSinceEpoch);
       if (createdCount > 0) {
         _invalidateUi();
@@ -189,7 +213,83 @@ class SmsListenerService {
       _scanning = false;
     }
 
-    return createdCount;
+    return SmsSyncResult(
+      createdCount: createdCount,
+      from: from ?? monthStart,
+      to: to,
+    );
+  }
+
+  /// Latest inbox SMS from [senderId], preferring a debit/expense message
+  /// over OTP or credit alerts when possible.
+  Future<LatestSenderSms?> latestInboxSmsForSender({
+    required String senderId,
+    String? lastFourDigits,
+  }) async {
+    if (!Platform.isAndroid) return null;
+    if (SmsParser.normalizeSender(senderId).isEmpty) return null;
+
+    final granted =
+        await _ref.read(permissionServiceProvider).isSmsGranted();
+    if (!granted) return null;
+
+    try {
+      final since = DateTime.now()
+          .subtract(const Duration(days: 90))
+          .millisecondsSinceEpoch;
+      final messages = await _telephony.getInboxSms(
+        columns: [
+          telephony.SmsColumn.ADDRESS,
+          telephony.SmsColumn.BODY,
+          telephony.SmsColumn.DATE,
+        ],
+        filter: telephony.SmsFilter.where(telephony.SmsColumn.DATE)
+            .greaterThanOrEqualTo('$since'),
+        sortOrder: [
+          telephony.OrderBy(
+            telephony.SmsColumn.DATE,
+            sort: telephony.Sort.DESC,
+          ),
+        ],
+      );
+
+      LatestSenderSms? withDigits;
+      LatestSenderSms? expenseLike;
+      LatestSenderSms? anyFromSender;
+      final digits = lastFourDigits?.trim();
+
+      for (final message in messages) {
+        final address = message.address?.trim() ?? '';
+        final body = message.body?.trim() ?? '';
+        if (address.isEmpty || body.isEmpty) continue;
+        if (!SmsParser.senderMatches(address, senderId)) continue;
+
+        final receivedAt = message.date != null
+            ? DateTime.fromMillisecondsSinceEpoch(message.date!)
+            : DateTime.now();
+        final item = LatestSenderSms(
+          senderId: address,
+          body: body,
+          receivedAt: receivedAt,
+        );
+        anyFromSender ??= item;
+
+        if (SmsParser.shouldIgnoreSms(body)) continue;
+        expenseLike ??= item;
+
+        if (digits != null &&
+            digits.length >= 4 &&
+            body.toLowerCase().contains(digits.toLowerCase())) {
+          withDigits = item;
+          break;
+        }
+      }
+
+      return withDigits ?? expenseLike ?? anyFromSender;
+    } catch (e, st) {
+      debugPrint('Latest sender SMS lookup failed: $e\n$st');
+      return null;
+    }
   }
 
   void _invalidateUi() {

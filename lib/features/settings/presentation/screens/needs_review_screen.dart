@@ -17,6 +17,7 @@ class NeedsReviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reviewsAsync = ref.watch(needsReviewProvider);
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Needs Review')),
       body: reviewsAsync.when(
         data: (rows) {

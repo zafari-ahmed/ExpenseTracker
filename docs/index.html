@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Tracker — Automatic expense tracking from your bank SMS</title>
+<meta name="description" content="Expense Tracker reads the SMS alerts your bank already sends and turns them into a running ledger. No manual entry, no bank login.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#151a23;
+    --ink-2:#1c2230;
+    --paper:#eee9de;
+    --paper-dim:#c9c4b6;
+    --brass:#c99a4b;
+    --brass-bright:#e0b568;
+    --sage:#7fb69e;
+    --rule:#333c4d;
+    --max:1120px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  .wrap{max-width:var(--max); margin:0 auto; padding:0 28px;}
+  h1,h2,h3{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .num{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- nav ---------- */
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(21,26,35,0.88);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--rule);
+  }
+  nav.wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:68px;
+  }
+  .logo{
+    font-family:'Fraunces', serif;
+    font-size:1.35rem;
+    font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .logo .dot{color:var(--brass);}
+  .navlinks{display:flex; gap:32px; align-items:center;}
+  .navlinks a{
+    text-decoration:none;
+    font-size:0.95rem;
+    color:var(--paper-dim);
+    transition:color .15s ease;
+  }
+  .navlinks a:hover{color:var(--paper);}
+  .navlinks .cta{
+    color:var(--ink);
+    background:var(--brass);
+    padding:9px 18px;
+    border-radius:3px;
+    font-weight:500;
+  }
+  .navlinks .cta:hover{background:var(--brass-bright);}
+  .navtoggle{display:none;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding:96px 0 88px;
+    border-bottom:1px solid var(--rule);
+  }
+  .hero .wrap{
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    gap:56px;
+    align-items:center;
+  }
+  .hero h1{
+    font-size:clamp(2.4rem, 4vw, 3.4rem);
+    line-height:1.1;
+    color:var(--paper);
+  }
+  .hero p.lede{
+    margin-top:22px;
+    font-size:1.1rem;
+    color:var(--paper-dim);
+    max-width:46ch;
+  }
+  .hero-ctas{
+    margin-top:34px;
+    display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+  }
+  .btn-primary{
+    background:var(--brass);
+    color:var(--ink);
+    padding:13px 26px;
+    border-radius:3px;
+    text-decoration:none;
+    font-weight:600;
+    display:inline-block;
+    transition:background .15s ease, transform .15s ease;
+  }
+  .btn-primary:hover{background:var(--brass-bright); transform:translateY(-1px);}
+  .btn-ghost{
+    color:var(--paper);
+    text-decoration:none;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:2px;
+    font-size:0.95rem;
+  }
+
+  /* phone mock */
+  .demo{
+    position:relative;
+    display:flex; justify-content:center;
+  }
+  .phone{
+    width:290px;
+    background:var(--ink-2);
+    border:1px solid var(--rule);
+    border-radius:26px;
+    padding:20px 16px 26px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.55);
+  }
+  .phone-notch{
+    width:60px; height:5px; background:var(--rule);
+    border-radius:4px; margin:0 auto 18px;
+  }
+  .bubble{
+    background:#242b3a;
+    border:1px solid var(--rule);
+    border-radius:12px 12px 12px 2px;
+    padding:12px 14px;
+    font-size:0.82rem;
+    color:var(--paper-dim);
+    max-width:92%;
+    opacity:0;
+    animation:rise .6s ease forwards;
+    animation-delay:.2s;
+  }
+  .bubble .sender{
+    display:block; font-size:0.72rem; color:var(--sage); margin-bottom:5px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .arrow-down{
+    display:flex; justify-content:center; margin:14px 0;
+    color:var(--paper-dim); opacity:0;
+    animation:rise .6s ease forwards; animation-delay:.9s;
+  }
+  .ledger-row{
+    background:var(--ink);
+    border:1px solid var(--rule);
+    border-left:3px solid var(--brass);
+    border-radius:4px;
+    padding:12px 14px;
+    display:flex; justify-content:space-between; align-items:center;
+    opacity:0;
+    animation:rise .6s ease forwards; animation-delay:1.2s;
+  }
+  .ledger-row .cat{font-size:0.88rem; color:var(--paper);}
+  .ledger-row .sub{display:block; font-size:0.72rem; color:var(--paper-dim); margin-top:2px;}
+  .ledger-row .amt{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--brass-bright);
+    font-size:0.95rem;
+  }
+  @keyframes rise{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .bubble, .arrow-down, .ledger-row{animation:none; opacity:1;}
+  }
+
+  /* ---------- how it works ---------- */
+  section{padding:88px 0;}
+  .section-head{max-width:56ch; margin-bottom:52px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    color:var(--brass);
+    margin-bottom:14px;
+    display:block;
+  }
+  .section-head h2{font-size:clamp(1.7rem,2.6vw,2.3rem); color:var(--paper);}
+  .section-head p{color:var(--paper-dim); margin-top:14px; font-size:1.02rem;}
+
+  .steps{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:0;
+    border-top:1px solid var(--rule);
+  }
+  .step{
+    padding:32px 28px 32px 0;
+    border-right:1px solid var(--rule);
+  }
+  .step:last-child{border-right:none;}
+  .step .n{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--brass);
+    font-size:0.85rem;
+  }
+  .step h3{
+    font-size:1.15rem; margin-top:12px; color:var(--paper); font-weight:500;
+  }
+  .step p{color:var(--paper-dim); margin-top:10px; font-size:0.96rem;}
+
+  /* ---------- features ---------- */
+  .features{background:var(--ink-2); border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);}
+  .fgrid{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    grid-auto-rows:auto;
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+  }
+  .fcard{background:var(--ink-2); padding:34px;}
+  .fcard.tall{grid-row:span 2;}
+  .fcard h3{font-size:1.15rem; color:var(--paper); font-weight:500;}
+  .fcard p{color:var(--paper-dim); margin-top:10px; font-size:0.96rem;}
+  .fcard .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    color:var(--sage);
+    display:block;
+    margin-bottom:12px;
+  }
+
+  /* ---------- about ---------- */
+  .about .wrap{
+    display:grid;
+    grid-template-columns:0.9fr 1.1fr;
+    gap:56px;
+  }
+  .about h2{font-size:clamp(1.7rem,2.6vw,2.3rem); color:var(--paper);}
+  .about .body p{color:var(--paper-dim); margin:0 0 16px; font-size:1.02rem;}
+  .about .body p:last-child{margin-bottom:0;}
+  .about-stats{
+    display:flex; flex-direction:column; gap:22px;
+    border-left:1px solid var(--rule);
+    padding-left:28px;
+  }
+  .about-stats .stat b{
+    display:block; font-family:'IBM Plex Mono', monospace;
+    font-size:1.6rem; color:var(--brass-bright);
+  }
+  .about-stats .stat span{color:var(--paper-dim); font-size:0.88rem;}
+
+  /* ---------- cta ---------- */
+  .cta-band{
+    padding:96px 0;
+    text-align:left;
+  }
+  .cta-band .wrap{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:40px;
+    flex-wrap:wrap;
+  }
+  .cta-band h2{font-size:clamp(1.8rem,3vw,2.5rem); max-width:16ch;}
+  .cta-band .status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.8rem;
+    color:var(--sage);
+    display:block;
+    margin-bottom:14px;
+  }
+  .waitlist{
+    display:flex; gap:10px; min-width:340px;
+  }
+  .waitlist input{
+    flex:1;
+    background:var(--ink-2);
+    border:1px solid var(--rule);
+    color:var(--paper);
+    padding:13px 16px;
+    border-radius:3px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.95rem;
+  }
+  .waitlist input::placeholder{color:var(--paper-dim);}
+  .waitlist input:focus, a:focus-visible, button:focus-visible{
+    outline:2px solid var(--brass-bright); outline-offset:2px;
+  }
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--rule); padding:36px 0;}
+  footer .wrap{
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:14px;
+  }
+  footer .fmeta{color:var(--paper-dim); font-size:0.85rem;}
+  footer .flinks{display:flex; gap:22px;}
+  footer .flinks a{color:var(--paper-dim); font-size:0.85rem; text-decoration:none;}
+  footer .flinks a:hover{color:var(--paper);}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:860px){
+    .hero .wrap{grid-template-columns:1fr;}
+    .demo{order:-1;}
+    .steps{grid-template-columns:1fr;}
+    .step{border-right:none; border-bottom:1px solid var(--rule); padding:26px 0;}
+    .fgrid{grid-template-columns:1fr;}
+    .fcard.tall{grid-row:auto;}
+    .about .wrap{grid-template-columns:1fr;}
+    .about-stats{flex-direction:row; border-left:none; border-top:1px solid var(--rule); padding-left:0; padding-top:24px; flex-wrap:wrap;}
+    .navlinks{display:none;}
+    .cta-band .wrap{flex-direction:column; align-items:flex-start;}
+    .waitlist{width:100%; min-width:0;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <div class="logo">Expense Tracker<span class="dot">.</span></div>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#about">About</a>
+      <a class="cta" href="#waitlist">Join waitlist</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <h1>Your bank already texts you every rupee.<br>Expense Tracker just adds them up.</h1>
+      <p class="lede">Expense Tracker reads the transaction alerts your bank sends by SMS and turns them into a running ledger — categorized, totalled, and ready to check. No manual entry, no bank login, no spreadsheet.</p>
+      <div class="hero-ctas">
+        <a class="btn-primary" href="#waitlist">Join the waitlist</a>
+        <a class="btn-ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="bubble">
+          <span class="sender">HBLPAK</span>
+          Rs 4,500 debited from a/c ****4521 at CARREFOUR on 09-Sep. Available bal Rs 62,180.
+        </div>
+        <div class="arrow-down">
+          <svg width="16" height="24" viewBox="0 0 16 24" fill="none"><path d="M8 0V22M8 22L2 16M8 22L14 16" stroke="currentColor" stroke-width="1.4"/></svg>
+        </div>
+        <div class="ledger-row">
+          <div class="cat">Groceries
+            <span class="sub">HBL •••• 4521 — Today</span>
+          </div>
+          <div class="amt">− 4,500</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">HOW IT WORKS</span>
+      <h2>Three steps, none of them typing.</h2>
+      <p>Expense Tracker sits quietly in the background and does the bookkeeping your bank already gave you the data for.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="n">01</span>
+        <h3>Grant read access to one folder</h3>
+        <p>Expense Tracker only reads messages from senders your bank actually uses — nothing else on your phone is touched.</p>
+      </div>
+      <div class="step">
+        <span class="n">02</span>
+        <h3>Each alert gets parsed</h3>
+        <p>Amount, merchant, account, and direction — debit or credit — are pulled out the moment the SMS arrives.</p>
+      </div>
+      <div class="step">
+        <span class="n">03</span>
+        <h3>Your ledger builds itself</h3>
+        <p>Entries land in a running total under a category, across every account you've connected, automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">FEATURES</span>
+      <h2>Built around how bank SMS actually reads.</h2>
+    </div>
+    <div class="fgrid">
+      <div class="fcard tall">
+        <span class="tag">MULTI-BANK</span>
+        <h3>Works across every account you carry</h3>
+        <p>Meezan, HBL, UBL, Easypaisa, JazzCash — Expense Tracker recognizes each bank's own alert format and merges them into one ledger, so a payment from any account lands in the same place.</p>
+      </div>
+      <div class="fcard">
+        <span class="tag">ON-DEVICE</span>
+        <h3>Nothing leaves your phone</h3>
+        <p>Parsing happens locally. Your balances and transaction history are never uploaded anywhere.</p>
+      </div>
+      <div class="fcard">
+        <span class="tag">LEARNS</span>
+        <h3>Corrects itself once you correct it</h3>
+        <p>Re-tag a merchant once — "Careem" as Transport, not Food — and every future alert from it follows suit.</p>
+      </div>
+      <div class="fcard">
+        <span class="tag">BREAKDOWN</span>
+        <h3>A monthly total you can actually trust</h3>
+        <p>See spend by category and by account, side by side, without exporting anything to a sheet first.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">ABOUT</span>
+      <h2>Why we built Expense Tracker</h2>
+    </div>
+    <div>
+      <div class="body">
+        <p>Every bank in Pakistan already sends a text for every rupee that moves. We kept retyping those same numbers into a spreadsheet at the end of each month — once for groceries, once for the electricity bill, once for whatever Careem had quietly added up to.</p>
+        <p>Expense Tracker exists so that step disappears. The bank has already done the work of recording the transaction; Expense Tracker's only job is to read what it sent and keep the total honest.</p>
+        <p>It's currently in closed testing ahead of a public release on Google Play. If you'd like early access, join the waitlist below.</p>
+      </div>
+      <div class="about-stats">
+        <div class="stat"><b>0</b><span>manual entries needed</span></div>
+        <div class="stat"><b>100%</b><span>parsing done on-device</span></div>
+        <div class="stat"><b>5+</b><span>major bank formats supported</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band" id="waitlist">
+  <div class="wrap">
+    <div>
+      <span class="status">● IN CLOSED TESTING</span>
+      <h2>Be first in line when it opens up.</h2>
+    </div>
+    <form class="waitlist" onsubmit="event.preventDefault(); this.querySelector('button')?.remove(); this.innerHTML='<span style=\'color:var(--sage); padding:13px 0; font-size:0.95rem;\'>You\'re on the list — we\'ll be in touch.</span>';">
+      <input type="email" required placeholder="you@email.com" aria-label="Email address">
+      <button type="submit" class="btn-primary" style="border:none; cursor:pointer; font-family:inherit;">Notify me</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fmeta">© 2026 Expense Tracker. Not affiliated with any bank.</div>
+    <div class="flinks">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#about">About</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

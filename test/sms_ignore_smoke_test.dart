@@ -29,6 +29,65 @@ void main() {
     );
   });
 
+  test('ignores promo and discount SMS without a debit signal', () {
+    expect(
+      SmsParser.shouldIgnoreSms(
+        'HBL: Get 20% discount at FOODPANDA. Use code SAVE20. T&C apply.',
+      ),
+      isTrue,
+    );
+    expect(
+      SmsParser.shouldIgnoreSms(
+        'Limited time offer: Flat PKR 500 off on your next purchase. Shop now.',
+      ),
+      isTrue,
+    );
+    expect(
+      SmsParser.shouldIgnoreSms(
+        'Txn: charged at BACHAA PARTY for PKR-2,361.00. Avail 10% discount next time.',
+      ),
+      isFalse,
+    );
+  });
+
+  test('configured sample rejects promo from the same sender', () {
+    const sample =
+        'Txn: charged at BACHAA PARTY for PKR-2,361.00 on 28/Jul/2026';
+    expect(
+      SmsParser.matchesConfiguredSample(
+        'Txn: charged at FOODPANDA for PKR-1,250.00 on 07/Oct/2026',
+        sample,
+      ),
+      isTrue,
+    );
+    expect(
+      SmsParser.matchesConfiguredSample(
+        'HBL: Get 20% discount at FOODPANDA. Use code SAVE20.',
+        sample,
+      ),
+      isFalse,
+    );
+  });
+
+  test('sender match does not treat another ID as the saved card', () {
+    expect(SmsParser.senderMatches('HBL', 'HBL'), isTrue);
+    expect(SmsParser.senderMatches('VM-HBLBK', 'HBL'), isTrue);
+    expect(SmsParser.senderMatches('8080', '8080'), isTrue);
+    expect(SmsParser.senderMatches('PROMO', 'HBL'), isFalse);
+    expect(SmsParser.senderMatches('JazzCash', 'HBL'), isFalse);
+    expect(SmsParser.senderMatches('8558', '80'), isFalse);
+    expect(SmsParser.senderMatches('8080', '80'), isFalse);
+  });
+
+  test('promo with an amount is still ignored', () {
+    expect(
+      SmsParser.shouldIgnoreSms(
+        'Dear customer, get PKR 500 cashback at FOODPANDA. Exclusive offer. T&C apply.',
+      ),
+      isTrue,
+    );
+  });
+
   test('custom ignore phrases match full SMS samples', () {
     const sample =
         'Dear customer, your bill payment of Rs.200 to KE was successful. Ref 99881';

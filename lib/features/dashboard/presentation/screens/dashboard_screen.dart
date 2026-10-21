@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_info.dart';
+import '../../../../core/routing/app_shell.dart';
+import '../../../../core/services/permission_service.dart';
+import '../../../../core/services/reviewer_demo_service.dart';
+import '../../../../core/services/service_providers.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
@@ -10,19 +16,45 @@ import '../../../cards/data/models/card_model.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../../settings/presentation/providers/preferences_provider.dart';
-import '../../../settings/presentation/providers/profile_provider.dart';
 import '../../../transactions/data/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
+import '../../../onboarding/presentation/widgets/how_to_sheet.dart';
 import '../providers/dashboard_month_provider.dart';
 import '../providers/threshold_status_provider.dart';
 import '../widgets/threshold_progress_section.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
-  Future<void> _pickMonth(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _howToPrompted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowHowTo());
+  }
+
+  Future<void> _maybeShowHowTo() async {
+    if (_howToPrompted) return;
+    _howToPrompted = true;
+    final seen = await ref.read(onboardingServiceProvider).isHowToSeen();
+    if (seen || !mounted) return;
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    await showHowToSheet(context, ref);
+  }
+
+  Future<void> _pickMonth() async {
     final current = ref.read(dashboardMonthProvider);
-    final picked = await etPickMonth(context, current);
+    final picked = await runWithHiddenAddFab(
+      ref,
+      () => etPickMonth(context, current),
+    );
     if (picked != null) {
       ref.read(dashboardMonthProvider.notifier).state =
           DateTime(picked.year, picked.month);
@@ -39,15 +71,16 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final month = ref.watch(dashboardMonthProvider);
     final cardsAsync = ref.watch(activeCardsProvider);
     final allCardsAsync = ref.watch(cardsListProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
     final txAsync = ref.watch(transactionsListProvider);
+    final smsGranted = ref.watch(smsGrantedProvider).valueOrNull ?? false;
+    ref.watch(currencyProvider);
     final periodMode =
         ref.watch(spendPeriodModeProvider).valueOrNull ?? SpendPeriodMode.monthly;
-    final profileName = ref.watch(profileNameProvider).valueOrNull ?? 'Member';
     final activeCards = cardsAsync.valueOrNull ?? const <CardModel>[];
     final allCards = allCardsAsync.valueOrNull ?? activeCards;
     final billDay = _defaultBillDay(activeCards);
@@ -62,8 +95,11 @@ class DashboardScreen extends ConsumerWidget {
       billDay: billDay,
     );
     final periodLabel = periodMode == SpendPeriodMode.monthly
-        ? DateFormat('MMMM yyyy').format(month)
-        : period.monthStyleLabel;
+        ? DateFormat('MMM yyyy').format(month).toUpperCase()
+        : period.monthStyleLabel.toUpperCase();
+    final endInclusive = period.end.subtract(const Duration(milliseconds: 1));
+    final rangeLabel =
+        '${DateFormat('dd').format(period.start)}–${DateFormat('dd').format(endInclusive)}';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -78,26 +114,71 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(thresholdsProvider);
             ref.invalidate(categoryThresholdStatusesProvider);
             ref.invalidate(spendPeriodModeProvider);
+            ref.invalidate(smsGrantedProvider);
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
-                child: EtAppHeader(
-                  greeting: etGreeting(profileName.split(' ').first),
-                  subtitle: periodLabel,
-                  onCalendarTap: () => _pickMonth(context, ref),
-                  onSubtitleTap: () => _pickMonth(context, ref),
-                  onAvatarTap: () => context.go('/settings'),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    children: [
+                      const EtBrandMark(),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          AppInfo.brand,
+                          style: GoogleFonts.archivo(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.go('/settings'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: AppColors.outlineVariant),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: smsGranted
+                                      ? AppColors.successBright
+                                      : AppColors.onSurfaceVariant,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                smsGranted ? 'SMS ON' : 'SMS OFF',
+                                style: GoogleFonts.ibmPlexMono(
+                                  fontSize: 10,
+                                  letterSpacing: 0.6,
+                                  color: AppColors.body,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.margin,
-                  0,
-                  AppSpacing.margin,
-                  108,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 108),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     txAsync.when(
@@ -131,52 +212,175 @@ class DashboardScreen extends ConsumerWidget {
                         final trend = prev <= 0
                             ? null
                             : ((total - prev) / prev) * 100;
+                        final days = mathMax(
+                          1,
+                          period.end.difference(period.start).inDays,
+                        );
+                        final dailyAvg = total / days;
+                        final spark = _weekSpark(monthRows);
 
                         return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            EtLabelCaps(
-                              periodMode == SpendPeriodMode.billingCycle
-                                  ? 'Total spend this billing cycle'
-                                  : 'Total spend this month',
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    EtMoney.format(total),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displayLarge
-                                        ?.copyWith(
-                                          color: AppColors.onSurface,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 40,
-                                          height: 1.05,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
-                                          ],
-                                        ),
-                                  ),
+                            GestureDetector(
+                              onTap: () => _pickMonth(),
+                              child: Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: AppColors.ink,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadii.card),
                                 ),
-                                if (trend != null) ...[
-                                  const SizedBox(width: 10),
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      '${trend >= 0 ? '↑' : '↓'} ${trend.abs().toStringAsFixed(0)}%',
-                                      style: TextStyle(
-                                        color: trend >= 0
-                                            ? AppColors.trendUp
-                                            : AppColors.success,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                      ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        EtLabelCaps(
+                                          'TOTAL SPEND · $periodLabel',
+                                          color: AppColors.soft,
+                                        ),
+                                        const Spacer(),
+                                        EtLabelCaps(
+                                          rangeLabel,
+                                          color: AppColors.soft,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            EtMoney.format(total),
+                                            style: GoogleFonts.archivo(
+                                              fontSize: 38,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -1.1,
+                                              height: 1,
+                                              color: Colors.white,
+                                              fontFeatures: const [
+                                                FontFeature.tabularFigures(),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        if (trend != null)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: trend >= 0
+                                                  ? AppColors.trendUp
+                                                  : AppColors.success,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  trend >= 0
+                                                      ? Icons.north_east
+                                                      : Icons.south_east,
+                                                  size: 13,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '${trend.abs().toStringAsFixed(0)}%',
+                                                  style:
+                                                      GoogleFonts.ibmPlexMono(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    EtBarSpark(
+                                      values: spark,
+                                      height: 40,
+                                      color: AppColors.primaryBright,
+                                      trackColor: AppColors.inkMuted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: EtSurfaceCard(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const EtLabelCaps('DAILY AVG'),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          EtMoney.format(dailyAvg),
+                                          style: GoogleFonts.archivo(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          trend == null
+                                              ? 'vs last period'
+                                              : '${trend >= 0 ? '+' : '−'}${trend.abs().toStringAsFixed(0)}% vs last',
+                                          style: GoogleFonts.ibmPlexMono(
+                                            fontSize: 10,
+                                            color: trend == null
+                                                ? AppColors.onSurfaceVariant
+                                                : trend >= 0
+                                                    ? AppColors.trendUp
+                                                    : AppColors.success,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: EtSurfaceCard(
+                                    onTap: () => context.push('/cards'),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const EtLabelCaps('PARSED SMS'),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${monthRows.where((r) => r.source.fromSms).length}',
+                                          style: GoogleFonts.archivo(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${activeCards.length} banks linked',
+                                          style: GoogleFonts.ibmPlexMono(
+                                            fontSize: 10,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -185,71 +389,19 @@ class DashboardScreen extends ConsumerWidget {
                       error: (e, _) => Text('Error: $e'),
                       loading: () => const LinearProgressIndicator(),
                     ),
-                    const SizedBox(height: AppSpacing.section),
-                    EtSectionHeader(
-                      title: 'My Accounts',
-                      actionLabel: 'See all',
-                      onAction: () => context.push('/cards'),
-                    ),
-                    SizedBox(
-                      height: 158,
-                      child: cardsAsync.when(
-                        data: (cards) {
-                          if (cards.isEmpty) {
-                            return EtSurfaceCard(
-                              elevated: false,
-                              onTap: () => context.push('/cards/form'),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.add_card, color: AppColors.primary),
-                                  SizedBox(width: 12),
-                                  Text('Add a card to get started'),
-                                ],
-                              ),
-                            );
-                          }
-                          return txAsync.when(
-                            data: (rows) => ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: cards.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                return _AccountCard(
-                                  card: cards[index],
-                                  rows: rows,
-                                  anchor: anchor,
-                                  periodMode: periodMode,
-                                );
-                              },
-                            ),
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (_, __) => const SizedBox.shrink(),
-                          );
-                        },
-                        error: (e, _) => Text('Error: $e'),
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.section),
+                    const SizedBox(height: 12),
                     reviewAsync.when(
                       data: (rows) {
                         if (rows.isEmpty) return const SizedBox.shrink();
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          padding: const EdgeInsets.only(bottom: 12),
                           child: EtSurfaceCard(
-                            color: AppColors.errorContainer.withValues(
-                              alpha: 0.45,
-                            ),
                             onTap: () => context.push('/needs-review'),
                             child: Row(
                               children: [
                                 const Icon(
-                                  Icons.assignment_late_outlined,
-                                  color: AppColors.error,
+                                  Icons.help_outline,
+                                  color: AppColors.amber,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -270,22 +422,21 @@ class DashboardScreen extends ConsumerWidget {
                       loading: () => const SizedBox.shrink(),
                     ),
                     EtSectionHeader(
-                      title: 'Top Categories',
-                      actionLabel: 'Add',
-                      onAction: () => context.push('/categories'),
+                      title: 'Top categories',
+                      actionLabel: 'See all',
+                      onAction: () => context.go('/analytics'),
                     ),
-                    _CategorySummaryRow(
-                      ref: ref,
-                      anchor: anchor,
+                    _TopCategoriesCard(
                       periodMode: periodMode,
+                      anchor: anchor,
                       billDayByCardId: billDays,
                       fallbackBillDay: billDay,
                     ),
-                    const SizedBox(height: AppSpacing.section),
+                    const SizedBox(height: 12),
                     const ThresholdProgressSection(),
-                    const SizedBox(height: AppSpacing.section),
+                    const SizedBox(height: 12),
                     EtSectionHeader(
-                      title: 'Recent Transactions',
+                      title: 'Latest · auto-captured',
                       actionLabel: 'View all',
                       onAction: () => context.go('/transactions'),
                     ),
@@ -299,26 +450,25 @@ class DashboardScreen extends ConsumerWidget {
                           fallbackBillDay: billDay,
                         );
                         if (monthRows.isEmpty) {
-                          return Text(
-                            periodMode == SpendPeriodMode.billingCycle
-                                ? 'No transactions this billing cycle yet.'
-                                : 'No transactions this month yet.',
+                          return _SmsEmptyState(
+                            billingCycle:
+                                periodMode == SpendPeriodMode.billingCycle,
                           );
                         }
                         final recent = monthRows.take(5).toList();
-                        final dateFmt = DateFormat('MMM d');
-                        return Column(
+                        final cardsById = {
+                          for (final c in allCards) c.id: c,
+                        };
+                        return EtTxnGroup(
                           children: [
-                            for (final row in recent) ...[
+                            for (final row in recent)
                               EtTransactionTile(
                                 place: row.place,
                                 category: row.category,
                                 amount: row.amount,
-                                subtitle: dateFmt.format(row.transactionDate),
+                                subtitle: _txnMeta(row, cardsById[row.cardId]),
                                 onTap: () => context.go('/transactions'),
                               ),
-                              const SizedBox(height: 10),
-                            ],
                           ],
                         );
                       },
@@ -334,6 +484,36 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+int mathMax(int a, int b) => a > b ? a : b;
+
+List<double> _weekSpark(List<TransactionModel> rows) {
+  final spark = <double>[];
+  for (var i = 6; i >= 0; i--) {
+    final day = DateTime.now().subtract(Duration(days: i));
+    spark.add(
+      rows
+          .where(
+            (r) =>
+                r.transactionDate.year == day.year &&
+                r.transactionDate.month == day.month &&
+                r.transactionDate.day == day.day,
+          )
+          .fold<double>(0, (a, b) => a + b.amount),
+    );
+  }
+  return spark;
+}
+
+String _txnMeta(TransactionModel row, CardModel? card) {
+  final bank = card?.bankName.isNotEmpty == true
+      ? card!.bankName
+      : (card?.cardName ?? 'CARD');
+  final digits = card?.lastFourDigits;
+  final tail = digits == null || digits.isEmpty ? bank : '$bank ····$digits';
+  final time = EtTxnTime.clock(row.transactionDate);
+  return time == null ? tail : '$time · $tail';
 }
 
 List<TransactionModel> _rowsForPeriod(
@@ -355,164 +535,22 @@ List<TransactionModel> _rowsForPeriod(
       .toList();
 }
 
-class _AccountCard extends StatelessWidget {
-  const _AccountCard({
-    required this.card,
-    required this.rows,
-    required this.anchor,
+class _TopCategoriesCard extends ConsumerWidget {
+  const _TopCategoriesCard({
     required this.periodMode,
-  });
-
-  final CardModel card;
-  final List<TransactionModel> rows;
-  final DateTime anchor;
-  final SpendPeriodMode periodMode;
-
-  @override
-  Widget build(BuildContext context) {
-    final digits = card.lastFourDigits ?? '----';
-    final cardRows = rows.where((r) => r.cardId == card.id).toList();
-    final period = PeriodHelper.forMode(
-      mode: periodMode,
-      anchor: anchor,
-      billDay: card.billDate,
-    );
-    final monthSpend = cardRows
-        .where((r) => period.contains(r.transactionDate))
-        .fold<double>(0, (a, b) => a + b.amount);
-
-    final spark = <double>[];
-    for (var i = 6; i >= 0; i--) {
-      final day = DateTime.now().subtract(Duration(days: i));
-      final dayTotal = cardRows
-          .where(
-            (r) =>
-                r.transactionDate.year == day.year &&
-                r.transactionDate.month == day.month &&
-                r.transactionDate.day == day.day,
-          )
-          .fold<double>(0, (a, b) => a + b.amount);
-      spark.add(dayTotal);
-    }
-
-    return SizedBox(
-      width: 260,
-      height: 158,
-      child: Material(
-        color: AppColors.surfaceContainerLowest,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.summary),
-          side: BorderSide(
-            color: AppColors.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push('/cards/form?cardId=${card.id}'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.account_balance_outlined,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.more_vert,
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                      size: 18,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  card.cardName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    height: 1.2,
-                  ),
-                ),
-                Text(
-                  '**** $digits',
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceVariant,
-                    fontSize: 12,
-                    height: 1.3,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const EtLabelCaps('Spend'),
-                          Text(
-                            EtMoney.format(monthSpend),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              height: 1.2,
-                              fontFeatures: [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    EtSparkline(values: spark, width: 64, height: 28),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategorySummaryRow extends StatelessWidget {
-  const _CategorySummaryRow({
-    required this.ref,
     required this.anchor,
-    required this.periodMode,
     required this.billDayByCardId,
     required this.fallbackBillDay,
   });
 
-  final WidgetRef ref;
-  final DateTime anchor;
   final SpendPeriodMode periodMode;
+  final DateTime anchor;
   final Map<String, int> billDayByCardId;
   final int fallbackBillDay;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final txAsync = ref.watch(transactionsListProvider);
-    final thresholdAsync = ref.watch(categoryThresholdStatusesProvider);
-
     return txAsync.when(
       data: (rows) {
         final monthRows = _rowsForPeriod(
@@ -523,100 +561,151 @@ class _CategorySummaryRow extends StatelessWidget {
           fallbackBillDay: fallbackBillDay,
         );
         if (monthRows.isEmpty) {
-          return Text(
-            periodMode == SpendPeriodMode.billingCycle
-                ? 'No transactions this billing cycle yet.'
-                : 'No transactions this month yet.',
+          return EtSurfaceCard(
+            child: Text(
+              periodMode == SpendPeriodMode.billingCycle
+                  ? 'No category spend this billing cycle yet.'
+                  : 'No category spend this month yet.',
+              style: const TextStyle(color: AppColors.onSurfaceVariant),
+            ),
           );
         }
-
         final totals = <String, double>{};
         for (final row in monthRows) {
           totals[row.category] = (totals[row.category] ?? 0) + row.amount;
         }
-
-        final warningNames = thresholdAsync.maybeWhen(
-          data: (statuses) => statuses
-              .where((s) => s.isHighlighted)
-              .map((s) => s.categoryName)
-              .toSet(),
-          orElse: () => <String>{},
-        );
-
         final top = totals.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-        final items = top.take(8).toList();
-
-        return SizedBox(
-          height: 64,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              if (index == items.length) {
-                return Align(
-                  alignment: Alignment.center,
-                  child: Material(
-                    color: AppColors.surfaceContainerHigh,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => context.push('/categories'),
-                      child: const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Icon(
-                          Icons.add,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-              final e = items[index];
-              final warned = warningNames.contains(e.key);
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: warned
-                      ? AppColors.errorContainer.withValues(alpha: 0.45)
-                      : AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  border: Border.all(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
+        final items = top.take(3).toList();
+        final maxV = items.first.value;
+        return EtSurfaceCard(
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                Row(
                   children: [
-                    EtCategoryBadge(category: e.key, size: 32, iconSize: 16),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        EtLabelCaps(e.key),
-                        Text(
-                          EtMoney.format(e.value),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            height: 1.2,
+                    EtCategoryBadge(
+                      category: items[i].key,
+                      size: 30,
+                      iconSize: 17,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  items[i].key,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                EtMoney.format(items[i].value),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 5),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(99),
+                            child: LinearProgressIndicator(
+                              value: maxV == 0 ? 0 : items[i].value / maxV,
+                              minHeight: 4,
+                              backgroundColor: AppColors.hairline,
+                              color: AppCategoryStyle.colorFor(items[i].key),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              );
-            },
+              ],
+            ],
           ),
         );
       },
       error: (_, __) => const SizedBox.shrink(),
       loading: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _SmsEmptyState extends ConsumerStatefulWidget {
+  const _SmsEmptyState({required this.billingCycle});
+
+  final bool billingCycle;
+
+  @override
+  ConsumerState<_SmsEmptyState> createState() => _SmsEmptyStateState();
+}
+
+class _SmsEmptyStateState extends ConsumerState<_SmsEmptyState> {
+  bool _busy = false;
+
+  Future<void> _runSample() async {
+    setState(() => _busy = true);
+    try {
+      final created = await ReviewerDemoService(ref).importSampleDebitSms();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            created
+                ? 'Sample bank debit SMS parsed: FOODPANDA Rs 1,250'
+                : 'That sample SMS is already in your transactions.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not parse sample SMS: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return EtSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.billingCycle
+                ? 'No bank SMS expenses in this billing cycle.'
+                : 'No bank SMS found for this month.',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This app reads debit SMS from your bank or card and turns matching messages into expenses. If this phone has no bank alerts, try a sample debit SMS.',
+            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _busy ? null : _runSample,
+              child: Text(
+                _busy ? 'Parsing sample SMS...' : 'Try a sample debit SMS',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/constants/app_info.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/stitch_widgets.dart';
 import '../providers/onboarding_provider.dart';
 
 class StartupScreen extends ConsumerStatefulWidget {
@@ -12,89 +15,50 @@ class StartupScreen extends ConsumerStatefulWidget {
   ConsumerState<StartupScreen> createState() => _StartupScreenState();
 }
 
-class _StartupScreenState extends ConsumerState<StartupScreen>
-    with SingleTickerProviderStateMixin {
+class _StartupScreenState extends ConsumerState<StartupScreen> {
   bool _navigated = false;
-  late final AnimationController _controller;
-  late final Animation<double> _fade;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   Future<void> _goOnce(bool done) async {
     if (_navigated || !mounted) return;
     _navigated = true;
-    await Future<void>.delayed(const Duration(milliseconds: 1600));
-    if (!mounted) return;
+    if (!done) {
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (!mounted) return;
+    }
     context.go(done ? '/dashboard' : '/onboarding');
   }
 
   @override
   Widget build(BuildContext context) {
-    final doneAsync = ref.watch(onboardingCompletedProvider);
-    doneAsync.whenData(_goOnce);
+    ref.watch(onboardingCompletedProvider).whenData(_goOnce);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: FadeTransition(
-        opacity: _fade,
-        child: ScaleTransition(
-          scale: _scale,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 148,
-                  height: 148,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surfaceContainerLow,
-                    boxShadow: AppShadows.level1,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    AppAssets.splashShield,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Text(
-                  'Expense Tracker',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 28,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Calm control over every spend',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                ),
-              ],
+      backgroundColor: AppColors.ink,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const EtBrandMark(size: 56),
+            const SizedBox(height: 18),
+            Text(
+              AppInfo.brand,
+              style: GoogleFonts.archivo(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 28,
+                letterSpacing: -0.8,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              'SMS-parsed expense tracker',
+              style: GoogleFonts.ibmPlexMono(
+                color: AppColors.soft,
+                fontSize: 11,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
         ),
       ),
     );

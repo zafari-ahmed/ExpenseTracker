@@ -93,11 +93,8 @@ class TransactionMutations {
       ..createdAt = DateTime.now()
       ..source = TransactionSource.manual;
     await repo.upsertTransaction(row);
-    final thresholdService = await _ref.read(thresholdAlertServiceProvider.future);
-    await thresholdService.checkForCategoryThreshold(
-      categoryName: row.category,
-      forMonth: row.transactionDate,
-    );
+    final dispatcher = await _ref.read(notificationDispatcherProvider.future);
+    await dispatcher.onManualExpenseAdded(transaction: row);
     _refresh();
   }
 
@@ -106,6 +103,7 @@ class TransactionMutations {
     required String place,
     required String description,
     required String category,
+    double? amount,
     bool rememberForFuture = true,
   }) async {
     final repo = await _ref.read(transactionsRepositoryProvider.future);
@@ -114,6 +112,7 @@ class TransactionMutations {
       place: place,
       description: description,
       category: category,
+      amount: amount,
     );
 
     if (rememberForFuture) {

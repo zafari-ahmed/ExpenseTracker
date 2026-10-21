@@ -51,4 +51,11 @@ class CategoryMutations {
     // Dashboard threshold cards depend on this.
     _ref.invalidate(categoriesProvider);
   }
+
+  Future<void> deleteThreshold(String categoryId) async {
+    final repo = await _ref.read(categoriesRepositoryProvider.future);
+    await repo.deleteThresholdByCategoryId(categoryId);
+    _ref.invalidate(thresholdsProvider);
+    _ref.invalidate(categoriesProvider);
+  }
 }

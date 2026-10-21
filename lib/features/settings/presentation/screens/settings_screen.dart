@@ -1,17 +1,23 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/constants/app_currency.dart';
+import '../../../../core/services/data_refresh.dart';
+import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
-import '../../../categories/data/models/category_threshold_model.dart';
+import '../../../onboarding/presentation/widgets/how_to_sheet.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
 import '../../../dashboard/presentation/providers/threshold_status_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
@@ -24,11 +30,9 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsync = ref.watch(notificationPrefsProvider);
-    final thresholdsAsync = ref.watch(thresholdsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final cardsAsync = ref.watch(cardsListProvider);
     final reviewAsync = ref.watch(needsReviewProvider);
-    final themeMode = ref.watch(themeModeProvider);
     final profileNameAsync = ref.watch(profileNameProvider);
     final profileName = profileNameAsync.valueOrNull ?? 'Member';
 
@@ -44,72 +48,56 @@ class SettingsScreen extends ConsumerWidget {
             108,
           ),
           children: [
-            const EtAppHeader(showCalendar: false),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 10),
+              child: Text(
+                'Setup',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
             EtSurfaceCard(
-              elevated: false,
-              child: Column(
+              onTap: () => _changeProfileName(context, ref, profileName),
+              child: Row(
                 children: [
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      const EtAvatar(size: 88),
-                      Material(
-                        color: AppColors.primary,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _changeProfilePhoto(context, ref),
-                          child: const SizedBox(
-                            width: 30,
-                            height: 30,
-                            child: Icon(
-                              Icons.camera_alt_outlined,
-                              color: Colors.white,
-                              size: 16,
-                            ),
+                  GestureDetector(
+                    onTap: () => _changeProfilePhoto(context, ref),
+                    child: const EtAvatar(size: 42),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profileName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    profileName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  Text(
-                    'SMS Expense Tracking',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    onPressed: () => _changeProfilePhoto(context, ref),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shape: const StadiumBorder(),
+                        const EtLabelCaps('LOCAL ONLY · NO ACCOUNT'),
+                      ],
                     ),
-                    child: const Text('Change Photo'),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () => _changeProfileName(context, ref, profileName),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: const Text('Change Name'),
-                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.onSurfaceVariant),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            const EtLabelCaps('Help'),
+            const SizedBox(height: 8),
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.menu_book_outlined,
+                  title: 'How to use',
+                  subtitle: 'Add a card, sender ID, sample SMS, then sync',
+                  onTap: () => showHowToSheet(context, ref, markSeen: true),
+                ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.section),
-            const EtLabelCaps('Cards'),
+            const EtLabelCaps('SMS & DATA'),
             const SizedBox(height: 8),
             _SettingsGroup(
               children: [
@@ -140,22 +128,11 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Sync SMS now',
                   subtitle: 'Scan inbox for card transactions',
                   onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Scanning SMS inbox…')),
-                    );
-                    final count = await ref
+                    final result = await ref
                         .read(smsListenerServiceProvider)
                         .syncInbox(forceFullWindow: true);
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          count == 0
-                              ? 'No new card SMS found'
-                              : 'Imported $count transaction(s) from SMS',
-                        ),
-                      ),
-                    );
+                    if (!context.mounted) return;
+                    await _showSmsSyncAlert(context, result);
                   },
                 ),
                 _SettingsRow(
@@ -195,6 +172,12 @@ class SettingsScreen extends ConsumerWidget {
               data: (prefs) => _SettingsGroup(
                 children: [
                   _SettingsRow(
+                    icon: Icons.tune_outlined,
+                    title: 'Category thresholds',
+                    subtitle: 'Set monthly limits per category',
+                    onTap: () => context.push('/settings/thresholds'),
+                  ),
+                  _SettingsRow(
                     icon: Icons.notifications_active_outlined,
                     title: 'Spending Limits',
                     subtitle: 'Alert me at budget thresholds',
@@ -217,6 +200,18 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                   _SettingsToggleRow(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Expense alerts',
+                    subtitle: 'Notify when SMS expense is saved',
+                    value: prefs.expenseAddedNotificationsEnabled,
+                    onChanged: (value) async {
+                      await ref
+                          .read(appPreferencesServiceProvider)
+                          .setExpenseAddedNotificationsEnabled(value);
+                      ref.invalidate(notificationPrefsProvider);
+                    },
+                  ),
+                  _SettingsToggleRow(
                     icon: Icons.mail_outline,
                     title: 'Bill Reminders',
                     subtitle: '${prefs.billLeadDays} days before bill date',
@@ -225,18 +220,6 @@ class SettingsScreen extends ConsumerWidget {
                       await ref
                           .read(appPreferencesServiceProvider)
                           .setBillReminderEnabled(value);
-                      ref.invalidate(notificationPrefsProvider);
-                    },
-                  ),
-                  _SettingsToggleRow(
-                    icon: Icons.summarize_outlined,
-                    title: 'Category Summaries',
-                    subtitle: 'Push category spending updates',
-                    value: prefs.summaryPushEnabled,
-                    onChanged: (value) async {
-                      await ref
-                          .read(appPreferencesServiceProvider)
-                          .setSummaryPushEnabled(value);
                       ref.invalidate(notificationPrefsProvider);
                     },
                   ),
@@ -322,86 +305,343 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                   loading: () => const LinearProgressIndicator(),
-                  error: (e, _) => _SettingsRow(
+                  error: (e, _) => const _SettingsRow(
                     icon: Icons.date_range_outlined,
                     title: 'Spend period',
                     subtitle: 'Error loading preference',
                     onTap: null,
                   ),
                 ),
-                _SettingsRow(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Theme',
-                  subtitle: _themeLabel(themeMode),
-                  onTap: () {
-                    final next = switch (themeMode) {
-                      ThemeMode.system => ThemeMode.light,
-                      ThemeMode.light => ThemeMode.dark,
-                      ThemeMode.dark => ThemeMode.system,
-                    };
-                    ref.read(themeModeProvider.notifier).state = next;
-                  },
-                ),
-                _SettingsRow(
-                  icon: Icons.language_outlined,
-                  title: 'Currency & Region',
-                  subtitle: 'PKR (Rs.)',
-                  onTap: null,
+                ref.watch(currencyProvider).when(
+                  data: (currency) => _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: '${currency.name} · ${currency.code}',
+                    trailing: Text(
+                      currency.code,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => _pickCurrency(context, ref, currency),
+                  ),
+                  loading: () => const _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: 'Loading…',
+                    onTap: null,
+                  ),
+                  error: (_, __) => _SettingsRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Currency',
+                    subtitle: 'Tap to choose',
+                    onTap: () => _pickCurrency(
+                      context,
+                      ref,
+                      AppCurrency.pkr,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.section),
-            const EtLabelCaps('Category Thresholds'),
+            const EtLabelCaps('SMS money management'),
             const SizedBox(height: 8),
-            categoriesAsync.when(
-              data: (categories) => thresholdsAsync.when(
-                data: (thresholds) => Column(
-                  children: [
-                    for (final c in categories)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: EtSurfaceCard(
-                          radius: AppRadii.card,
-                          child: _ThresholdTile(
-                            categoryId: c.id,
-                            categoryName: c.name,
-                            threshold: _findThreshold(thresholds, c.id),
-                            onSave: (limit, percent) async {
-                              final threshold =
-                                  _findThreshold(thresholds, c.id) ??
-                                      (CategoryThresholdModel()
-                                        ..id = const Uuid().v4()
-                                        ..categoryId = c.id);
-                              threshold
-                                ..monthlyLimit = limit
-                                ..notifyAtPercent = percent;
-                              await ref
-                                  .read(categoryMutationsProvider)
-                                  .upsertThreshold(threshold);
-                              ref.invalidate(categoryThresholdStatusesProvider);
-                            },
-                          ),
-                        ),
-                      ),
-                  ],
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.sms_outlined,
+                  title: 'Try a sample debit SMS',
+                  subtitle:
+                      'Parse a sample bank debit message into an expense (for review if this phone has no bank SMS)',
+                  onTap: () => _trySampleSms(context, ref),
                 ),
-                error: (e, _) => Text('Error: $e'),
-                loading: () => const LinearProgressIndicator(),
-              ),
-              error: (e, _) => Text('Error: $e'),
-              loading: () => const LinearProgressIndicator(),
+              ],
             ),
+            const SizedBox(height: AppSpacing.section),
+            const EtLabelCaps('Backup & data'),
+            const SizedBox(height: 8),
+            _SettingsGroup(
+              children: [
+                _SettingsRow(
+                  icon: Icons.file_upload_outlined,
+                  title: 'Export backup',
+                  subtitle: 'Save cards and transactions to a file',
+                  onTap: () => _exportBackup(context, ref),
+                ),
+                _SettingsRow(
+                  icon: Icons.file_download_outlined,
+                  title: 'Import backup',
+                  subtitle: 'Replace data on this install from a file',
+                  onTap: () => _importBackup(context, ref),
+                ),
+                _SettingsRow(
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Delete local data',
+                  subtitle: 'Remove transactions stored on this phone',
+                  onTap: () => _deleteLocalData(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  String _themeLabel(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => 'System default',
-        ThemeMode.light => 'Light',
-        ThemeMode.dark => 'Dark',
-      };
+}
+
+Future<void> _showSmsSyncAlert(
+  BuildContext context,
+  SmsSyncResult result,
+) async {
+  if (result.skipped) {
+    await etInfoAlert(
+      context,
+      title: 'SMS sync',
+      message: 'A sync is already running. Try again in a moment.',
+    );
+    return;
+  }
+  if (!result.granted) {
+    await etInfoAlert(
+      context,
+      title: 'SMS permission needed',
+      message: 'Allow SMS access to fetch inbox messages from your cards.',
+    );
+    return;
+  }
+
+  final from = result.from;
+  final to = result.to;
+  final dateLine = from == null || to == null
+      ? 'Fetched inbox SMS.'
+      : 'Fetched SMS from ${_formatSyncDay(from)} to ${_formatSyncDay(to)}.';
+  final countLine = result.createdCount == 0
+      ? 'No new card expenses found.'
+      : 'Imported ${result.createdCount} new expense(s).';
+
+  await etInfoAlert(
+    context,
+    title: 'SMS sync complete',
+    message: '$dateLine\n\n$countLine',
+  );
+}
+
+String _formatSyncDay(DateTime value) {
+  return DateFormat('d MMM yyyy').format(value);
+}
+
+Future<void> _pickCurrency(
+  BuildContext context,
+  WidgetRef ref,
+  AppCurrency current,
+) async {
+  final selected = await showModalBottomSheet<AppCurrency>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      final maxHeight = MediaQuery.sizeOf(ctx).height * 0.62;
+      return SafeArea(
+        child: SizedBox(
+          height: maxHeight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Display currency',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Changes the symbol shown in the app. Amounts are not converted.',
+                  style: TextStyle(
+                    color: AppColors.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: AppCurrency.all.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: AppColors.hairline),
+                    itemBuilder: (context, index) {
+                      final item = AppCurrency.all[index];
+                      final selected = item.code == current.code;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          item.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text('${item.code} · ${item.symbol.trim()}'),
+                        trailing: selected
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppColors.primary,
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(ctx, item),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  if (selected == null) return;
+  await ref.read(appPreferencesServiceProvider).setCurrencyCode(selected.code);
+  CurrencyStore.current = selected;
+  ref.invalidate(currencyProvider);
+}
+
+Future<void> _trySampleSms(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final created = await ReviewerDemoService(ref).importSampleDebitSms();
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          created
+              ? 'Sample bank debit SMS parsed: FOODPANDA Rs. 1,250'
+              : 'That sample SMS is already in your transactions.',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not parse sample SMS: $e')),
+    );
+  }
+}
+
+Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final backup = await ref.read(backupServiceProvider.future);
+    final file = await backup.exportToTempFile();
+    if (!context.mounted) return;
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      subject: 'Expense Tracker backup',
+      text: 'Keep this file. Updating the app in place does not need it; uninstalling or changing package name does.',
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Export failed: $e')),
+    );
+  }
+}
+
+Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Replace all local data?'),
+      content: const Text(
+        'Importing a backup overwrites cards, transactions, and settings on this install. Export first if you are unsure. Do not import just to update the APK — install over the existing app instead.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Choose file'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final picked = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: const ['json'],
+  );
+  if (!context.mounted) return;
+  final path = picked?.files.single.path;
+  if (path == null) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final backup = await ref.read(backupServiceProvider.future);
+    final result = await backup.importFromFile(File(path));
+    invalidateLocalDataProviders(ref);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Imported ${result.transactionCount} transaction(s) and ${result.cardCount} card(s)',
+        ),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Import failed: $e')),
+    );
+  }
+}
+
+Future<void> _deleteLocalData(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete all local data?'),
+      content: const Text(
+        'This permanently deletes transactions, cards, and settings on this phone. Export a backup first. This cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final backup = await ref.read(backupServiceProvider.future);
+  await backup.deleteAllLocalData();
+  invalidateLocalDataProviders(ref);
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Local data deleted')),
+  );
 }
 
 Future<void> _changeProfilePhoto(BuildContext context, WidgetRef ref) async {
@@ -459,6 +699,18 @@ Future<void> _changeProfilePhoto(BuildContext context, WidgetRef ref) async {
   );
 
   if (source == null) return;
+  if (source == ImageSource.camera) {
+    final allowed =
+        await ref.read(permissionServiceProvider).requestCamera();
+    if (!allowed) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera permission is required to take a photo')),
+        );
+      }
+      return;
+    }
+  }
   await ref.read(profileMutationsProvider).pickAndSave(source: source);
 }
 
@@ -481,10 +733,25 @@ Future<void> _changeProfileName(
       ),
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+            minimumSize: const Size(88, 44),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
           onPressed: () => Navigator.pop(ctx),
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(88, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
           onPressed: () => Navigator.pop(ctx, controller.text),
           child: const Text('Save'),
         ),
@@ -512,10 +779,7 @@ class _SettingsGroup extends StatelessWidget {
           for (var i = 0; i < children.length; i++) ...[
             children[i],
             if (i < children.length - 1)
-              Divider(
-                height: 1,
-                color: AppColors.outlineVariant.withValues(alpha: 0.4),
-              ),
+              const Divider(height: 1, color: AppColors.hairline),
           ],
         ],
       ),
@@ -546,15 +810,7 @@ class _SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 22),
-            ),
+            Icon(icon, color: AppColors.body, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -604,15 +860,7 @@ class _SettingsToggleRow extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 22),
-          ),
+          Icon(icon, color: AppColors.body, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -635,172 +883,3 @@ class _SettingsToggleRow extends StatelessWidget {
   }
 }
 
-CategoryThresholdModel? _findThreshold(
-  List<CategoryThresholdModel> thresholds,
-  String categoryId,
-) {
-  for (final item in thresholds) {
-    if (item.categoryId == categoryId) return item;
-  }
-  return null;
-}
-
-class _ThresholdTile extends ConsumerStatefulWidget {
-  const _ThresholdTile({
-    required this.categoryId,
-    required this.categoryName,
-    required this.threshold,
-    required this.onSave,
-  });
-
-  final String categoryId;
-  final String categoryName;
-  final CategoryThresholdModel? threshold;
-  final Future<void> Function(double limit, int percent) onSave;
-
-  @override
-  ConsumerState<_ThresholdTile> createState() => _ThresholdTileState();
-}
-
-class _ThresholdTileState extends ConsumerState<_ThresholdTile> {
-  late final TextEditingController _limitCtrl;
-  late double _percent;
-
-  @override
-  void initState() {
-    super.initState();
-    _limitCtrl =
-        TextEditingController(text: '${widget.threshold?.monthlyLimit ?? 0}');
-    _percent = (widget.threshold?.notifyAtPercent ?? 80).toDouble();
-  }
-
-  @override
-  void dispose() {
-    _limitCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusAsync = ref.watch(categoryThresholdStatusesProvider);
-    final status = statusAsync.maybeWhen(
-      data: (rows) {
-        for (final row in rows) {
-          if (row.categoryId == widget.categoryId) return row;
-        }
-        return null;
-      },
-      orElse: () => null,
-    );
-
-    final barColor = status == null
-        ? AppColors.primary
-        : status.level == ThresholdLevel.exceeded
-            ? AppColors.error
-            : status.level == ThresholdLevel.warning
-                ? AppColors.warning
-                : AppColors.success;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            EtCategoryBadge(category: widget.categoryName, size: 36, iconSize: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.categoryName,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-            ),
-            if (status != null)
-              Text(
-                '${status.percentUsed.toStringAsFixed(0)}%',
-                style: TextStyle(
-                  color: barColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-          ],
-        ),
-        if (status != null) ...[
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: (status.percentUsed / 100).clamp(0.0, 1.0),
-              minHeight: 8,
-              color: barColor,
-              backgroundColor: AppColors.surfaceContainerHigh,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${EtMoney.format(status.spent)} of ${EtMoney.format(status.monthlyLimit)}',
-            style: const TextStyle(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 13,
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _limitCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Monthly limit',
-                  isDense: true,
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              children: [
-                Text(
-                  'Alert ${_percent.toInt()}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                SizedBox(
-                  width: 120,
-                  child: Slider(
-                    min: 50,
-                    max: 100,
-                    divisions: 10,
-                    value: _percent,
-                    onChanged: (value) => setState(() => _percent = value),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            onPressed: () async {
-              final limit = double.tryParse(_limitCtrl.text.trim()) ?? 0;
-              final messenger = ScaffoldMessenger.of(context);
-              await widget.onSave(limit, _percent.toInt());
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text('${widget.categoryName} threshold saved'),
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(minimumSize: const Size(110, 40)),
-            child: const Text('Save'),
-          ),
-        ),
-      ],
-    );
-  }
-}
