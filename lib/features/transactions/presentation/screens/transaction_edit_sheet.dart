@@ -69,6 +69,21 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
     return body.isNotEmpty;
   }
 
+  String _sourceLabel(TransactionSource source) {
+    switch (source) {
+      case TransactionSource.sms:
+        return 'SMS · auto';
+      case TransactionSource.smsEdited:
+        return 'SMS · edited';
+      case TransactionSource.notification:
+        return 'Notification · auto';
+      case TransactionSource.notificationEdited:
+        return 'Notification · edited';
+      case TransactionSource.manual:
+        return 'Manual';
+    }
+  }
+
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
@@ -282,11 +297,7 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                     _MetaRow(
                       label: 'SOURCE',
                       child: Text(
-                        widget.transaction.source == TransactionSource.smsEdited
-                            ? 'SMS · edited'
-                            : widget.transaction.source == TransactionSource.sms
-                                ? 'SMS · auto'
-                                : 'Manual',
+                        _sourceLabel(widget.transaction.source),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -301,7 +312,11 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                     children: [
                       Row(
                         children: [
-                          const EtLabelCaps('SOURCE MESSAGE'),
+                          EtLabelCaps(
+                            widget.transaction.source.fromNotification
+                                ? 'SOURCE ALERT'
+                                : 'SOURCE MESSAGE',
+                          ),
                           const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -310,18 +325,24 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                             ),
                             decoration: BoxDecoration(
                               color: widget.transaction.source ==
-                                      TransactionSource.smsEdited
+                                          TransactionSource.smsEdited ||
+                                      widget.transaction.source ==
+                                          TransactionSource.notificationEdited
                                   ? AppColors.amberTint
                                   : AppColors.greenTint,
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: EtLabelCaps(
                               widget.transaction.source ==
-                                      TransactionSource.smsEdited
+                                          TransactionSource.smsEdited ||
+                                      widget.transaction.source ==
+                                          TransactionSource.notificationEdited
                                   ? 'EDITED'
                                   : 'AUTO-PARSED',
                               color: widget.transaction.source ==
-                                      TransactionSource.smsEdited
+                                          TransactionSource.smsEdited ||
+                                      widget.transaction.source ==
+                                          TransactionSource.notificationEdited
                                   ? AppColors.warning
                                   : AppColors.success,
                             ),
@@ -345,20 +366,22 @@ class _TransactionEditSheetState extends ConsumerState<TransactionEditSheet> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () {
-                          if (widget.transaction.cardId.isEmpty) return;
-                          Navigator.pop(context);
-                          context.push(
-                            '/cards/sms-config?cardId=${widget.transaction.cardId}',
-                          );
-                        },
-                        child: EtLabelCaps(
-                          'FIX HOW THIS SENDER IS READ →',
-                          color: AppColors.primary,
+                      if (widget.transaction.source.fromSms) ...[
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () {
+                            if (widget.transaction.cardId.isEmpty) return;
+                            Navigator.pop(context);
+                            context.push(
+                              '/cards/sms-config?cardId=${widget.transaction.cardId}',
+                            );
+                          },
+                          child: const EtLabelCaps(
+                            'FIX HOW THIS SENDER IS READ →',
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 )

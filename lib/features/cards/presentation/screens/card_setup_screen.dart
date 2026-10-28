@@ -158,7 +158,8 @@ class CardSetupScreen extends ConsumerWidget {
                           onMenu: (value) async {
                             if (value == 'edit') {
                               context.push('/cards/form?cardId=${cards[i].id}');
-                            } else if (value == 'sms') {
+                            } else if (value == 'sms' &&
+                                cards[i].parseSource == CardParseSource.sms) {
                               context.push(
                                 '/cards/sms-config?cardId=${cards[i].id}',
                               );
@@ -253,6 +254,18 @@ class _DeckCard extends ConsumerWidget {
     final color = AppColors.themeForCardIcon(card.cardIcon);
     final onColor = Colors.white;
     final digits = card.lastFourDigits ?? '----';
+    final isNotification =
+        card.parseSource == CardParseSource.notification;
+    final parseLabel = isNotification ? 'Notification' : 'SMS';
+    final parseDetail = isNotification
+        ? (card.notificationAppLabel?.trim().isNotEmpty == true
+            ? card.notificationAppLabel!.trim()
+            : (card.notificationPackage.trim().isEmpty
+                ? 'App not set'
+                : card.notificationPackage.trim()))
+        : (card.smsSenderId.trim().isEmpty
+            ? 'Sender not set'
+            : card.smsSenderId.trim());
     final ruleAsync = ref.watch(parsingRuleByCardProvider(card.id));
     final hasRule = ruleAsync.maybeWhen(
       data: (rule) => rule != null,
@@ -269,6 +282,7 @@ class _DeckCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -294,35 +308,110 @@ class _DeckCard extends ConsumerWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: Icon(Icons.more_horiz, color: onColor.withValues(alpha: 0.75)),
+                tooltip: 'More',
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  Icons.more_horiz,
+                  color: onColor.withValues(alpha: 0.75),
+                ),
                 onSelected: onMenu,
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                itemBuilder: (_) => const [
                   PopupMenuItem(
-                    value: 'sms',
-                    child: Text(hasRule ? 'Edit SMS sample' : 'Add sample SMS'),
-                  ),
-                  const PopupMenuItem(
                     value: 'wipe',
                     child: Text('Delete all transactions'),
                   ),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete card')),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Delete card'),
+                  ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 22),
-          EtLabelCaps('SPENT THIS PERIOD', color: onColor.withValues(alpha: 0.75)),
-          const SizedBox(height: 4),
-          Text(
-            EtMoney.format(spend),
-            style: GoogleFonts.archivo(
-              color: onColor,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.6,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: onColor.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  parseLabel,
+                  style: GoogleFonts.archivo(
+                    color: onColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isNotification
+                      ? 'App · $parseDetail'
+                      : 'Sender · $parseDetail',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.ibmPlexMono(
+                    color: onColor.withValues(alpha: 0.8),
+                    fontSize: 10,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    EtLabelCaps(
+                      'SPENT THIS PERIOD',
+                      color: onColor.withValues(alpha: 0.75),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      EtMoney.format(spend),
+                      style: GoogleFonts.archivo(
+                        color: onColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isNotification) ...[
+                IconButton(
+                  tooltip: hasRule ? 'Edit SMS sample' : 'Add sample SMS',
+                  onPressed: () => onMenu('sms'),
+                  style: IconButton.styleFrom(
+                    backgroundColor: onColor.withValues(alpha: 0.16),
+                    foregroundColor: onColor,
+                  ),
+                  icon: const Icon(Icons.sms_outlined, size: 20),
+                ),
+                const SizedBox(width: 4),
+              ],
+              IconButton(
+                tooltip: 'Edit card',
+                onPressed: () => onMenu('edit'),
+                style: IconButton.styleFrom(
+                  backgroundColor: onColor.withValues(alpha: 0.16),
+                  foregroundColor: onColor,
+                ),
+                icon: const Icon(Icons.edit_outlined, size: 20),
+              ),
+            ],
           ),
         ],
       ),

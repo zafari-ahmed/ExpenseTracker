@@ -62,6 +62,17 @@ abstract final class SmsParser {
     'you have received',
     'funds received',
     'money received',
+    // Incoming transfers (SCB / bank credit alerts)
+    'into your account',
+    'made into your',
+    'made into your account',
+    'transferred into your',
+    'transfer into your',
+    'has been transferred into',
+    'have been transferred into',
+    // Advisory / non-spend alerts
+    'customer advisory',
+    'important advisory',
   ];
 
   /// Marketing / promo SMS from the same bank sender — skip unless the
@@ -114,6 +125,8 @@ abstract final class SmsParser {
     'debited',
     'charged at',
     'charged for',
+    'been charged',
+    'has been charged',
     'amount debited',
     'amt debited',
     'spent at',
@@ -136,6 +149,8 @@ abstract final class SmsParser {
     'debited',
     'charged at',
     'charged for',
+    'been charged',
+    'has been charged',
     'spent at',
     'spent on',
     'purchase at',
@@ -198,11 +213,33 @@ abstract final class SmsParser {
       return true;
     }
 
+    // "Funds transfer" / generic transfer wording without a debit verb.
+    if (_looksLikeIncomingTransfer(lower) && !hasExpenseSignal(lower)) {
+      return true;
+    }
+
     // Promo / discount alerts: skip unless the SMS is clearly a debit.
     if (_hasPromoPhrase(lower) && !hasStrongExpenseSignal(lower)) {
       return true;
     }
 
+    return false;
+  }
+
+  /// Incoming transfer / credit transfer wording (no debit verb).
+  static bool _looksLikeIncomingTransfer(String lower) {
+    if (lower.contains('into your account') ||
+        lower.contains('made into your') ||
+        lower.contains('transferred into your') ||
+        lower.contains('transfer into your')) {
+      return true;
+    }
+    if (lower.contains('funds transfer') ||
+        lower.contains('fund transfer') ||
+        lower.contains('has been transferred') ||
+        lower.contains('have been transferred')) {
+      return true;
+    }
     return false;
   }
 

@@ -33,9 +33,12 @@ class TransactionsRepository {
     final nextAmount = amount ?? current.amount;
     final amountChanged = nextAmount != current.amount;
     final placeChanged = place.trim() != current.place.trim();
-    if (current.source == TransactionSource.sms &&
-        (amountChanged || placeChanged)) {
-      current.source = TransactionSource.smsEdited;
+    if (amountChanged || placeChanged) {
+      if (current.source == TransactionSource.sms) {
+        current.source = TransactionSource.smsEdited;
+      } else if (current.source == TransactionSource.notification) {
+        current.source = TransactionSource.notificationEdited;
+      }
     }
 
     current
@@ -191,10 +194,10 @@ class TransactionsRepository {
     final rows = await _isar.transactionModels
         .filter()
         .cardIdEqualTo(cardId)
-        .sourceEqualTo(TransactionSource.sms)
         .findAll();
 
     for (final row in rows) {
+      if (!row.source.fromAuto) continue;
       if (row.amount != amount) continue;
       if (row.place.toLowerCase() != place.toLowerCase()) continue;
       if (row.transactionDate.isBefore(dayStart)) continue;

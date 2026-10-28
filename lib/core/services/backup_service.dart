@@ -144,9 +144,17 @@ class BackupService {
         'billDate': card.billDate,
         'isActive': card.isActive,
         'createdAt': card.createdAt.toIso8601String(),
+        'parseSource': card.parseSource.name,
+        'notificationPackage': card.notificationPackage,
+        'notificationAppLabel': card.notificationAppLabel,
       };
 
   CardModel _cardFromJson(Map<String, dynamic> json) {
+    final parseSourceName = json['parseSource'] as String? ?? 'sms';
+    final parseSource = CardParseSource.values.firstWhere(
+      (e) => e.name == parseSourceName,
+      orElse: () => CardParseSource.sms,
+    );
     return CardModel()
       ..id = json['id'] as String? ?? ''
       ..bankName = json['bankName'] as String? ?? ''
@@ -157,7 +165,10 @@ class BackupService {
       ..billDate = json['billDate'] as int? ?? 1
       ..isActive = json['isActive'] as bool? ?? true
       ..createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-          DateTime.now();
+          DateTime.now()
+      ..parseSource = parseSource
+      ..notificationPackage = json['notificationPackage'] as String? ?? ''
+      ..notificationAppLabel = json['notificationAppLabel'] as String?;
   }
 
   Map<String, dynamic> _ruleToJson(SmsParsingRuleModel rule) => <String, dynamic>{

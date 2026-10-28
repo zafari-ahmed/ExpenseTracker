@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/app_router.dart';
+import 'core/services/notification_ingest_service.dart';
 import 'core/services/service_providers.dart';
 import 'core/services/sms_listener_service.dart';
 import 'core/theme/app_theme.dart';
@@ -24,6 +25,7 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrapSms();
+      _bootstrapNotifications();
     });
   }
 
@@ -44,10 +46,21 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     }
   }
 
+  Future<void> _bootstrapNotifications() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await ref.read(notificationIngestBootstrapProvider.future);
+    } catch (e) {
+      debugPrint('Notification ingest bootstrap failed: $e');
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       ref.read(smsListenerServiceProvider).syncInbox();
+      ref.read(notificationIngestServiceProvider).refreshListeningState();
+      ref.invalidate(notificationAccessGrantedProvider);
       ref.read(notificationDispatcherProvider.future).then(
             (dispatcher) => dispatcher.runBillReminderChecks(),
           );
@@ -59,6 +72,7 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     final router = ref.watch(appRouterProvider);
     // Keep SMS bootstrap alive while app runs.
     ref.watch(smsBootstrapProvider);
+    ref.watch(notificationIngestBootstrapProvider);
     ref.watch(smsSyncTickProvider);
     ref.watch(currencyProvider);
 

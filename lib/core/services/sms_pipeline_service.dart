@@ -68,7 +68,12 @@ class SmsPipelineService {
     final cards = await _cardsRepository.getCards(activeOnly: true);
     if (cards.isEmpty) return const SmsProcessResult.none();
 
-    final card = _matchCard(cards, senderId: senderId);
+    final smsCards = cards
+        .where((c) => c.parseSource == CardParseSource.sms)
+        .toList(growable: false);
+    if (smsCards.isEmpty) return const SmsProcessResult.none();
+
+    final card = _matchCard(smsCards, senderId: senderId);
     if (card == null) return const SmsProcessResult.none();
 
     final rule = await _cardsRepository.getRuleForCard(card.id);
@@ -84,6 +89,135 @@ class SmsPipelineService {
       receivedAt: receivedAt,
       customIgnorePhrases: customIgnore,
       activeDefaultIgnorePhrases: activeDefaults,
+    );
+  }
+
+  /// Process a bank-app notification for cards with parseSource=notification.
+  Future<SmsProcessResult> processIncomingNotification({
+    required String packageName,
+    required String text,
+    DateTime? postedAt,
+  }) async {
+    if (!Platform.isAndroid) return const SmsProcessResult.none();
+
+    final pkg = packageName.trim();
+    final trimmedBody = text.trim();
+    if (pkg.isEmpty || trimmedBody.isEmpty) {
+      return const SmsProcessResult.none();
+    }
+    if (pkg == 'com.theexpensetracker.app') {
+      return const SmsProcessResult.none();
+    }
+
+    final customIgnore = await _customIgnoreList();
+    final activeDefaults = await _activeDefaultIgnoreList();
+
+    if (SmsParser.shouldIgnoreSms(
+      trimmedBody,
+      extraIgnorePhrases: customIgnore,
+      enabledDefaultIgnorePhrases: activeDefaults,
+    )) {
+      return const SmsProcessResult.none();
+    }
+
+    if (await _transactionsRepository.existsByRawSmsBody(trimmedBody)) {
+      return const SmsProcessResult.none();
+    }
+
+    final cards = await _cardsRepository.getCards(activeOnly: true);
+    final notifCards = cards
+        .where(
+          (c) =>
+              c.parseSource == CardParseSource.notification &&
+              c.notificationPackage.trim() == pkg,
+        )
+        .toList(growable: false);
+    if (notifCards.isEmpty) return const SmsProcessResult.none();
+
+    final card = _matchNotificationCard(notifCards, body: trimmedBody);
+    if (card == null) return const SmsProcessResult.none();
+
+    final lowerBody = trimmedBody.toLowerCase();
+    if (!SmsParser.hasStrongExpenseSignal(lowerBody) &&
+        !SmsParser.hasExpenseSignal(lowerBody)) {
+      return const SmsProcessResult.none();
+    }
+
+    final rule = await _cardsRepository.getRuleForCard(card.id);
+    final amountPattern =
+        rule?.amountPattern.trim().isNotEmpty == true
+            ? rule!.amountPattern
+            : SmsParser.defaultAmountPatterns.first;
+    final placePattern =
+        rule?.placePattern.trim().isNotEmpty == true
+            ? rule!.placePattern
+            : SmsParser.defaultPlacePatterns.first;
+    final datePattern = rule?.datePattern;
+
+    if (rule != null) {
+      final excludes = <String>{
+        ...activeDefaults,
+        ...customIgnore,
+        ...rule.excludeKeywords,
+      };
+      if (excludes.any(
+        (e) => e.trim().isNotEmpty && lowerBody.contains(e.toLowerCase()),
+      )) {
+        return const SmsProcessResult.none();
+      }
+    }
+
+    final parsed = SmsParser.parse(
+      smsBody: trimmedBody,
+      amountPattern: amountPattern,
+      placePattern: placePattern,
+      datePattern: datePattern,
+      fallbackDate: postedAt ?? DateTime.now(),
+      strict: false,
+    );
+
+    if (parsed == null) {
+      if (!SmsParser.hasStrongExpenseSignal(lowerBody)) {
+        return const SmsProcessResult.none();
+      }
+      await _transactionsRepository.addNeedsReview(
+        cardId: card.id,
+        senderId: pkg,
+        rawSmsBody: trimmedBody,
+        parseError: 'Could not extract amount/place/date from notification',
+        receivedAt: postedAt,
+      );
+      return const SmsProcessResult.needsReview();
+    }
+
+    if (await _transactionsRepository.existsSimilarSmsTransaction(
+      cardId: card.id,
+      amount: parsed.amount,
+      place: parsed.place,
+      transactionDate: parsed.transactionDate,
+    )) {
+      return const SmsProcessResult.none();
+    }
+
+    final category =
+        await _categoriesRepository.autoCategoryFromPlace(parsed.place);
+
+    final tx = TransactionModel()
+      ..id = _uuid.v4()
+      ..cardId = card.id
+      ..amount = parsed.amount
+      ..place = parsed.place
+      ..description = ''
+      ..category = category?.name ?? 'Uncategorized'
+      ..rawSmsBody = trimmedBody
+      ..transactionDate = parsed.transactionDate
+      ..createdAt = DateTime.now()
+      ..source = TransactionSource.notification;
+    await _transactionsRepository.upsertTransaction(tx);
+
+    return SmsProcessResult.expenseAdded(
+      transaction: tx,
+      cardName: card.cardName,
     );
   }
 
@@ -197,5 +331,30 @@ class SmsPipelineService {
     if (senderMatches.isEmpty) return null;
     if (senderMatches.length == 1) return senderMatches.first;
     return senderMatches.first;
+  }
+
+  /// Prefer the card whose last-4 appears in the notification text.
+  CardModel? _matchNotificationCard(
+    List<CardModel> cards, {
+    required String body,
+  }) {
+    if (cards.isEmpty) return null;
+    if (cards.length == 1) return cards.first;
+
+    final lower = body.toLowerCase();
+    CardModel? withDigits;
+    for (final card in cards) {
+      final digits = card.lastFourDigits?.trim();
+      if (digits == null || digits.length < 4) continue;
+      if (lower.contains(digits.toLowerCase()) ||
+          lower.contains('ending $digits') ||
+          lower.contains('ending with $digits') ||
+          lower.contains('xx$digits') ||
+          lower.contains('*$digits')) {
+        withDigits = card;
+        break;
+      }
+    }
+    return withDigits ?? cards.first;
   }
 }

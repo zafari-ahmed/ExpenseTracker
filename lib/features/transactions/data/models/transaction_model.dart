@@ -5,9 +5,16 @@ part 'transaction_model.g.dart';
 enum TransactionSource {
   sms,
   manual,
-  smsEdited;
+  smsEdited,
+  notification,
+  notificationEdited;
 
   bool get fromSms => this == sms || this == smsEdited;
+
+  bool get fromNotification =>
+      this == notification || this == notificationEdited;
+
+  bool get fromAuto => fromSms || fromNotification;
 }
 
 @collection

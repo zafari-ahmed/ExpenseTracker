@@ -10,12 +10,14 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_currency.dart';
 import '../../../../core/services/data_refresh.dart';
+import '../../../../core/services/notification_ingest_service.dart';
 import '../../../../core/services/reviewer_demo_service.dart';
 import '../../../../core/services/service_providers.dart';
 import '../../../../core/services/sms_listener_service.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/period_range.dart';
 import '../../../../core/widgets/stitch_widgets.dart';
+import '../../../cards/data/models/card_model.dart';
 import '../../../cards/presentation/providers/cards_provider.dart';
 import '../../../onboarding/presentation/widgets/how_to_sheet.dart';
 import '../../../categories/presentation/providers/categories_provider.dart';
@@ -91,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
                 _SettingsRow(
                   icon: Icons.menu_book_outlined,
                   title: 'How to use',
-                  subtitle: 'Add a card, sender ID, sample SMS, then sync',
+                  subtitle: 'SMS or notification parse, then sync',
                   onTap: () => showHowToSheet(context, ref, markSeen: true),
                 ),
               ],
@@ -141,6 +143,39 @@ class SettingsScreen extends ConsumerWidget {
                   subtitle: 'Paste full SMS samples to skip on sync',
                   onTap: () => context.push('/settings/sms-ignore'),
                 ),
+                if (Platform.isAndroid)
+                  cardsAsync.when(
+                    data: (cards) {
+                      final hasNotificationCards = cards.any(
+                        (c) =>
+                            c.isActive &&
+                            c.parseSource == CardParseSource.notification &&
+                            c.notificationPackage.trim().isNotEmpty,
+                      );
+                      if (!hasNotificationCards) {
+                        return const SizedBox.shrink();
+                      }
+                      final accessAsync =
+                          ref.watch(notificationAccessGrantedProvider);
+                      final status = accessAsync.when(
+                        data: (granted) => granted ? 'On' : 'Off',
+                        loading: () => '…',
+                        error: (_, __) => 'Off',
+                      );
+                      return _SettingsRow(
+                        icon: Icons.notifications_active_outlined,
+                        title: 'Notification access',
+                        subtitle: status,
+                        onTap: () async {
+                          await ref
+                              .read(notificationAccessServiceProvider)
+                              .openAccessSettings();
+                        },
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.section),
@@ -526,17 +561,17 @@ Future<void> _pickCurrency(
 Future<void> _trySampleSms(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
-    final created = await ReviewerDemoService(ref).importSampleDebitSms();
+    final result = await ReviewerDemoService(ref).importSampleDebitSms();
     if (!context.mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          created
-              ? 'Sample bank debit SMS parsed: FOODPANDA Rs. 1,250'
-              : 'That sample SMS is already in your transactions.',
-        ),
-      ),
-    );
+    final message = switch (result) {
+      ReviewerDemoImportResult.created =>
+        'Sample bank debit SMS parsed: FOODPANDA Rs. 1,250',
+      ReviewerDemoImportResult.alreadyExists =>
+        'That sample SMS is already in your transactions.',
+      ReviewerDemoImportResult.failed =>
+        'Could not parse the sample SMS. Check SMS permissions and try again.',
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   } catch (e) {
     if (!context.mounted) return;
     messenger.showSnackBar(

@@ -218,11 +218,15 @@ const _TransactionModelsourceEnumValueMap = {
   'sms': 0,
   'manual': 1,
   'smsEdited': 2,
+  'notification': 3,
+  'notificationEdited': 4,
 };
 const _TransactionModelsourceValueEnumMap = {
   0: TransactionSource.sms,
   1: TransactionSource.manual,
   2: TransactionSource.smsEdited,
+  3: TransactionSource.notification,
+  4: TransactionSource.notificationEdited,
 };
 
 Id _transactionModelGetId(TransactionModel object) {

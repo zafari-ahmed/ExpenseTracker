@@ -45,8 +45,24 @@ const CardModelSchema = CollectionSchema(
       name: r'lastFourDigits',
       type: IsarType.string,
     ),
-    r'smsSenderId': PropertySchema(
+    r'notificationAppLabel': PropertySchema(
       id: 8,
+      name: r'notificationAppLabel',
+      type: IsarType.string,
+    ),
+    r'notificationPackage': PropertySchema(
+      id: 9,
+      name: r'notificationPackage',
+      type: IsarType.string,
+    ),
+    r'parseSource': PropertySchema(
+      id: 10,
+      name: r'parseSource',
+      type: IsarType.byte,
+      enumMap: _CardModelparseSourceEnumValueMap,
+    ),
+    r'smsSenderId': PropertySchema(
+      id: 11,
       name: r'smsSenderId',
       type: IsarType.string,
     ),
@@ -97,6 +113,13 @@ int _cardModelEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.notificationAppLabel;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.notificationPackage.length * 3;
   bytesCount += 3 + object.smsSenderId.length * 3;
   return bytesCount;
 }
@@ -115,7 +138,10 @@ void _cardModelSerialize(
   writer.writeString(offsets[5], object.id);
   writer.writeBool(offsets[6], object.isActive);
   writer.writeString(offsets[7], object.lastFourDigits);
-  writer.writeString(offsets[8], object.smsSenderId);
+  writer.writeString(offsets[8], object.notificationAppLabel);
+  writer.writeString(offsets[9], object.notificationPackage);
+  writer.writeByte(offsets[10], object.parseSource.index);
+  writer.writeString(offsets[11], object.smsSenderId);
 }
 
 CardModel _cardModelDeserialize(
@@ -134,7 +160,12 @@ CardModel _cardModelDeserialize(
   object.isActive = reader.readBool(offsets[6]);
   object.isarId = id;
   object.lastFourDigits = reader.readStringOrNull(offsets[7]);
-  object.smsSenderId = reader.readString(offsets[8]);
+  object.notificationAppLabel = reader.readStringOrNull(offsets[8]);
+  object.notificationPackage = reader.readString(offsets[9]);
+  object.parseSource =
+      _CardModelparseSourceValueEnumMap[reader.readByteOrNull(offsets[10])] ??
+      CardParseSource.sms;
+  object.smsSenderId = reader.readString(offsets[11]);
   return object;
 }
 
@@ -162,11 +193,27 @@ P _cardModelDeserializeProp<P>(
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
+      return (_CardModelparseSourceValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              CardParseSource.sms)
+          as P;
+    case 11:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
 }
+
+const _CardModelparseSourceEnumValueMap = {'sms': 0, 'notification': 1};
+const _CardModelparseSourceValueEnumMap = {
+  0: CardParseSource.sms,
+  1: CardParseSource.notification,
+};
 
 Id _cardModelGetId(CardModel object) {
   return object.isarId;
@@ -1305,6 +1352,369 @@ extension CardModelQueryFilter
     });
   }
 
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'notificationAppLabel'),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'notificationAppLabel'),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'notificationAppLabel',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'notificationAppLabel',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'notificationAppLabel',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'notificationAppLabel', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationAppLabelIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'notificationAppLabel',
+          value: '',
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'notificationPackage',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'notificationPackage',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'notificationPackage',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'notificationPackage', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  notificationPackageIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'notificationPackage',
+          value: '',
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition> parseSourceEqualTo(
+    CardParseSource value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'parseSource', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition>
+  parseSourceGreaterThan(CardParseSource value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'parseSource',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition> parseSourceLessThan(
+    CardParseSource value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'parseSource',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterFilterCondition> parseSourceBetween(
+    CardParseSource lower,
+    CardParseSource upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'parseSource',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<CardModel, CardModel, QAfterFilterCondition> smsSenderIdEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1556,6 +1966,45 @@ extension CardModelQuerySortBy on QueryBuilder<CardModel, CardModel, QSortBy> {
     });
   }
 
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  sortByNotificationAppLabel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationAppLabel', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  sortByNotificationAppLabelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationAppLabel', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> sortByNotificationPackage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationPackage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  sortByNotificationPackageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationPackage', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> sortByParseSource() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'parseSource', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> sortByParseSourceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'parseSource', Sort.desc);
+    });
+  }
+
   QueryBuilder<CardModel, CardModel, QAfterSortBy> sortBySmsSenderId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'smsSenderId', Sort.asc);
@@ -1679,6 +2128,45 @@ extension CardModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  thenByNotificationAppLabel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationAppLabel', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  thenByNotificationAppLabelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationAppLabel', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> thenByNotificationPackage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationPackage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy>
+  thenByNotificationPackageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationPackage', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> thenByParseSource() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'parseSource', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QAfterSortBy> thenByParseSourceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'parseSource', Sort.desc);
+    });
+  }
+
   QueryBuilder<CardModel, CardModel, QAfterSortBy> thenBySmsSenderId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'smsSenderId', Sort.asc);
@@ -1755,6 +2243,34 @@ extension CardModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<CardModel, CardModel, QDistinct> distinctByNotificationAppLabel({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'notificationAppLabel',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QDistinct> distinctByNotificationPackage({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'notificationPackage',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
+  QueryBuilder<CardModel, CardModel, QDistinct> distinctByParseSource() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'parseSource');
+    });
+  }
+
   QueryBuilder<CardModel, CardModel, QDistinct> distinctBySmsSenderId({
     bool caseSensitive = true,
   }) {
@@ -1817,6 +2333,27 @@ extension CardModelQueryProperty
   QueryBuilder<CardModel, String?, QQueryOperations> lastFourDigitsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastFourDigits');
+    });
+  }
+
+  QueryBuilder<CardModel, String?, QQueryOperations>
+  notificationAppLabelProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'notificationAppLabel');
+    });
+  }
+
+  QueryBuilder<CardModel, String, QQueryOperations>
+  notificationPackageProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'notificationPackage');
+    });
+  }
+
+  QueryBuilder<CardModel, CardParseSource, QQueryOperations>
+  parseSourceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'parseSource');
     });
   }
 

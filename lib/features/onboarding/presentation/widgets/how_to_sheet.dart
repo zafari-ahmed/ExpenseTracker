@@ -10,8 +10,9 @@ import '../../../../core/widgets/stitch_widgets.dart';
 const howToSlideAssets = <String>[
   'assets/howto/howto_01_add_card.jpg',
   'assets/howto/howto_02_sender.jpg',
-  'assets/howto/howto_03_sample_sms.jpg',
-  'assets/howto/howto_04_sync.jpg',
+  'assets/howto/howto_03_parse_sms.jpg',
+  'assets/howto/howto_04_parse_notification.jpg',
+  'assets/howto/howto_05_sync.jpg',
 ];
 
 Future<void> showHowToSheet(

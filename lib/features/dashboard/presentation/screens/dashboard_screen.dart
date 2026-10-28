@@ -315,73 +315,130 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: EtSurfaceCard(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const EtLabelCaps('DAILY AVG'),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          EtMoney.format(dailyAvg),
-                                          style: GoogleFonts.archivo(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: -0.4,
+                            Builder(
+                              builder: (context) {
+                                final smsCards = activeCards
+                                    .where(
+                                      (c) =>
+                                          c.parseSource == CardParseSource.sms,
+                                    )
+                                    .length;
+                                final notifCards = activeCards
+                                    .where(
+                                      (c) =>
+                                          c.parseSource ==
+                                          CardParseSource.notification,
+                                    )
+                                    .length;
+                                // One card → that source only.
+                                // Mixed SMS + notification cards → both tiles.
+                                // All same source → that source only.
+                                final showSms = smsCards > 0;
+                                final showNotif = notifCards > 0;
+                                final smsCount = monthRows
+                                    .where((r) => r.source.fromSms)
+                                    .length;
+                                final notifCount = monthRows
+                                    .where((r) => r.source.fromNotification)
+                                    .length;
+                                final tileCount =
+                                    1 + (showSms ? 1 : 0) + (showNotif ? 1 : 0);
+                                final valueSize = tileCount >= 3 ? 18.0 : 20.0;
+                                TextStyle valueStyle() => GoogleFonts.archivo(
+                                      fontSize: valueSize,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.4,
+                                    );
+                                TextStyle subStyle([Color? color]) =>
+                                    GoogleFonts.ibmPlexMono(
+                                      fontSize: tileCount >= 3 ? 9 : 10,
+                                      color: color ??
+                                          AppColors.onSurfaceVariant,
+                                    );
+
+                                Widget gap() => SizedBox(
+                                      width: tileCount >= 3 ? 10 : 12,
+                                    );
+
+                                Widget dailyTile() => EtSurfaceCard(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const EtLabelCaps('DAILY AVG'),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            EtMoney.format(dailyAvg),
+                                            style: valueStyle(),
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          trend == null
-                                              ? 'vs last period'
-                                              : '${trend >= 0 ? '+' : '−'}${trend.abs().toStringAsFixed(0)}% vs last',
-                                          style: GoogleFonts.ibmPlexMono(
-                                            fontSize: 10,
-                                            color: trend == null
-                                                ? AppColors.onSurfaceVariant
-                                                : trend >= 0
-                                                    ? AppColors.trendUp
-                                                    : AppColors.success,
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            trend == null
+                                                ? 'vs last period'
+                                                : '${trend >= 0 ? '+' : '−'}${trend.abs().toStringAsFixed(0)}% vs last',
+                                            style: subStyle(
+                                              trend == null
+                                                  ? null
+                                                  : trend >= 0
+                                                      ? AppColors.trendUp
+                                                      : AppColors.success,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: EtSurfaceCard(
-                                    onTap: () => context.push('/cards'),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const EtLabelCaps('PARSED SMS'),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '${monthRows.where((r) => r.source.fromSms).length}',
-                                          style: GoogleFonts.archivo(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: -0.4,
+                                        ],
+                                      ),
+                                    );
+
+                                Widget parseTile({
+                                  required String label,
+                                  required int count,
+                                  required int cards,
+                                }) =>
+                                    EtSurfaceCard(
+                                      onTap: () => context.push('/cards'),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          EtLabelCaps(label),
+                                          const SizedBox(height: 8),
+                                          Text('$count', style: valueStyle()),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            cards == 1
+                                                ? '1 card'
+                                                : '$cards cards',
+                                            style: subStyle(),
                                           ),
+                                        ],
+                                      ),
+                                    );
+
+                                return Row(
+                                  children: [
+                                    Expanded(child: dailyTile()),
+                                    if (showSms) ...[
+                                      gap(),
+                                      Expanded(
+                                        child: parseTile(
+                                          label: 'SMS',
+                                          count: smsCount,
+                                          cards: smsCards,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${activeCards.length} banks linked',
-                                          style: GoogleFonts.ibmPlexMono(
-                                            fontSize: 10,
-                                            color: AppColors.onSurfaceVariant,
-                                          ),
+                                      ),
+                                    ],
+                                    if (showNotif) ...[
+                                      gap(),
+                                      Expanded(
+                                        child: parseTile(
+                                          label: 'NOTIF',
+                                          count: notifCount,
+                                          cards: notifCards,
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         );
@@ -656,16 +713,18 @@ class _SmsEmptyStateState extends ConsumerState<_SmsEmptyState> {
   Future<void> _runSample() async {
     setState(() => _busy = true);
     try {
-      final created = await ReviewerDemoService(ref).importSampleDebitSms();
+      final result = await ReviewerDemoService(ref).importSampleDebitSms();
       if (!mounted) return;
+      final message = switch (result) {
+        ReviewerDemoImportResult.created =>
+          'Sample bank debit SMS parsed: FOODPANDA Rs 1,250',
+        ReviewerDemoImportResult.alreadyExists =>
+          'That sample SMS is already in your transactions.',
+        ReviewerDemoImportResult.failed =>
+          'Could not parse the sample SMS. Check SMS permissions and try again.',
+      };
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            created
-                ? 'Sample bank debit SMS parsed: FOODPANDA Rs 1,250'
-                : 'That sample SMS is already in your transactions.',
-          ),
-        ),
+        SnackBar(content: Text(message)),
       );
     } catch (e) {
       if (!mounted) return;
